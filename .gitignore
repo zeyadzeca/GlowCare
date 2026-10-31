@@ -1,0 +1,34 @@
+# .NET build output
+bin/
+obj/
+out/
+
+# Visual Studio / VS Code / Rider
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# User secrets (never commit secrets)
+secrets.json
+
+# Environment files
+.env
+.env.*
+
+# Publish output
+publish/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (frontend - added in Phase 10)
+node_modules/
+dist/
