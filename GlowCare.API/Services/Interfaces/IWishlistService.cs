@@ -13,4 +13,7 @@ public interface IWishlistService
 
     /// <summary>Removes one wishlist item. Returns false if not found or not owned.</summary>
     Task<bool> RemoveItemAsync(string userId, int wishlistItemId);
+
+    /// <summary>Removes a product from the caller's wishlist. Returns false if not found or not owned.</summary>
+    Task<bool> RemoveItemByProductIdAsync(string userId, int productId);
 }

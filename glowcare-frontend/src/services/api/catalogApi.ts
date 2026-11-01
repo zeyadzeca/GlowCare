@@ -35,8 +35,18 @@ export async function getCategories(): Promise<Category[]> {
   return data
 }
 
+export async function getFeaturedCategories(limit = 7): Promise<Category[]> {
+  const { data } = await api.get<Category[]>('/categories/featured', { params: { limit } })
+  return data
+}
+
 export async function getBrands(): Promise<Brand[]> {
   const { data } = await api.get<Brand[]>('/brands')
+  return data
+}
+
+export async function getFeaturedBrands(limit = 7): Promise<Brand[]> {
+  const { data } = await api.get<Brand[]>('/brands/featured', { params: { limit } })
   return data
 }
 

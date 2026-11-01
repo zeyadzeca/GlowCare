@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
+import { useWishlist } from '@/context/WishlistContext'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/FormField'
@@ -13,6 +14,7 @@ import { Input } from '@/components/common/FormField'
 export function LoginPage() {
   const { login } = useAuth()
   const { mergeGuestCart } = useCart()
+  const { mergeGuestWishlist } = useWishlist()
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
@@ -28,6 +30,7 @@ export function LoginPage() {
       const response = await login({ email, password })
       // Merge guest cart after successful login
       await mergeGuestCart()
+      await mergeGuestWishlist()
       // Route each role to its own area: sellers land on the seller dashboard,
       // admins on the admin panel, customers on the storefront.
       const destination = response.roles.includes('Admin')
@@ -35,7 +38,6 @@ export function LoginPage() {
         : response.roles.includes('Seller')
           ? '/seller'
           : '/'
-      console.info('[login-debug] ' + JSON.stringify({ roles: response.roles, destination, userRef: window.__traceUser = (window.__traceUser ?? 0) + 1 }))
       navigate(destination, { replace: true })
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to sign in. Please check your credentials.'))

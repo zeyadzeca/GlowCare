@@ -23,6 +23,12 @@ public class CategoriesController : ControllerBase
     public async Task<ActionResult<IList<CategoryDto>>> GetCategories()
         => Ok(await _categories.GetCategoriesAsync());
 
+    /// <summary>Featured categories for homepage (sorted by product count, then name).</summary>
+    [HttpGet("featured")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IList<CategoryDto>>> GetFeaturedCategories([FromQuery] int limit = 7)
+        => Ok(await _categories.GetFeaturedCategoriesAsync(limit));
+
     /// <summary>One category by id.</summary>
     [HttpGet("{id:int}")]
     [AllowAnonymous]

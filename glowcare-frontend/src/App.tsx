@@ -106,14 +106,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/wishlist"
-            element={
-              <ProtectedRoute>
-                <WishlistPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/wishlist" element={<WishlistPage />} />
           <Route
             path="/account"
             element={

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
+import { useWishlist } from '@/context/WishlistContext'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/FormField'
@@ -16,6 +17,7 @@ import { Input } from '@/components/common/FormField'
 export function RegisterPage() {
   const { register } = useAuth()
   const { mergeGuestCart } = useCart()
+  const { mergeGuestWishlist } = useWishlist()
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -45,6 +47,7 @@ export function RegisterPage() {
       await register(form)
       // Merge guest cart after successful registration
       await mergeGuestCart()
+      await mergeGuestWishlist()
       navigate('/', { replace: true })
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to create your account.'))

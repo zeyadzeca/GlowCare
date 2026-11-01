@@ -47,8 +47,8 @@ export function HomePage() {
       const [productResult, categoryResult, brandResult, skinTypeResult, bannerResult] =
         await Promise.allSettled([
           catalogApi.getProducts({ pageSize: 8, sortBy: 'newest' }),
-          catalogApi.getCategories(),
-          catalogApi.getBrands(),
+          catalogApi.getFeaturedCategories(7),
+          catalogApi.getFeaturedBrands(7),
           catalogApi.getSkinTypes(),
           promoBannerApi.getActiveBanners(),
         ])
@@ -184,7 +184,15 @@ export function HomePage() {
       {categories.length > 0 && (
         <section className="bg-white py-16">
           <Container>
-            <h2 className="heading-display uppercase">Shop by Category</h2>
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="heading-display uppercase">Shop by Category</h2>
+              <Link
+                to="/products"
+                className="hidden items-center gap-1 text-sm font-semibold text-royal hover:underline sm:flex"
+              >
+                View all <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
             <div className="mt-8 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-5">
               {categories.map((category) => (
                 <Link key={category.id} to={`/products?categoryId=${category.id}`} className="group">
@@ -276,7 +284,15 @@ export function HomePage() {
       {brands.length > 0 && (
         <section className="bg-white py-16">
           <Container>
-            <h2 className="heading-display uppercase">Featured Brands</h2>
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="heading-display uppercase">Featured Brands</h2>
+              <Link
+                to="/products"
+                className="hidden items-center gap-1 text-sm font-semibold text-royal hover:underline sm:flex"
+              >
+                View all <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
             <div className="mt-8 grid grid-cols-2 gap-5 md:grid-cols-4">
               {brands.map((brand) => (
                 <Link

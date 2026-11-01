@@ -45,13 +45,22 @@ public class WishlistService : IWishlistService
 
         if (!alreadySaved)
         {
-            _db.WishlistItems.Add(new WishlistItem
+            var row = new WishlistItem
             {
                 WishlistId = wishlist.Id,
                 ProductId = productId
-            });
+            };
+            _db.WishlistItems.Add(row);
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Unique (WishlistId, ProductId) - a parallel add already saved it.
+                _db.Entry(row).State = EntityState.Detached;
+            }
         }
 
         return await BuildWishlistDtoAsync(wishlist.Id);
@@ -62,6 +71,19 @@ public class WishlistService : IWishlistService
         var item = await _db.WishlistItems
             .FirstOrDefaultAsync(i => i.Id == wishlistItemId && i.Wishlist!.UserId == userId);
 
+        return await RemoveOwnedItemAsync(item);
+    }
+
+    public async Task<bool> RemoveItemByProductIdAsync(string userId, int productId)
+    {
+        var item = await _db.WishlistItems
+            .FirstOrDefaultAsync(i => i.ProductId == productId && i.Wishlist!.UserId == userId);
+
+        return await RemoveOwnedItemAsync(item);
+    }
+
+    private async Task<bool> RemoveOwnedItemAsync(WishlistItem? item)
+    {
         if (item is null)
         {
             return false; // not found or not yours

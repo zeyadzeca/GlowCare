@@ -4,19 +4,22 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from '@/context/AuthContext'
 import { CartProvider } from '@/context/CartContext'
+import { WishlistProvider } from '@/context/WishlistContext'
 import './index.css'
 
 /**
  * Entry point. Provider order matters:
  * BrowserRouter (routing) -> AuthProvider (JWT + profile) -> CartProvider
- * (depends on the authenticated user) -> App (shell + routes).
+ * and WishlistProvider (depend on the authenticated user) -> App.
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <CartProvider>
-          <App />
+          <WishlistProvider>
+            <App />
+          </WishlistProvider>
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>

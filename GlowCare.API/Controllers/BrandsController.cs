@@ -23,6 +23,12 @@ public class BrandsController : ControllerBase
     public async Task<ActionResult<IList<BrandDto>>> GetBrands()
         => Ok(await _brands.GetBrandsAsync());
 
+    /// <summary>Featured brands for homepage (sorted by product count, then name).</summary>
+    [HttpGet("featured")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IList<BrandDto>>> GetFeaturedBrands([FromQuery] int limit = 7)
+        => Ok(await _brands.GetFeaturedBrandsAsync(limit));
+
     /// <summary>One brand by id.</summary>
     [HttpGet("{id:int}")]
     [AllowAnonymous]

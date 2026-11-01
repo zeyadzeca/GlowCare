@@ -8,6 +8,9 @@ public interface IBrandService
     /// <summary>All brands with their active product counts (public).</summary>
     Task<IList<BrandDto>> GetBrandsAsync();
 
+    /// <summary>Featured brands for homepage (sorted by product count, then name).</summary>
+    Task<IList<BrandDto>> GetFeaturedBrandsAsync(int limit);
+
     Task<BrandDto?> GetByIdAsync(int id);
 
     Task<BrandDto> CreateAsync(BrandCreateDto dto);

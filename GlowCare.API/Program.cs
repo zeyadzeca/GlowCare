@@ -184,7 +184,7 @@ if (app.Environment.IsDevelopment())
     await SeedData.InitializeAsync(app.Services);
     // Fixed academic demo seller accounts (Development only - permanent demo
     // credentials, never seeded in production).
-    await GlowCare.API.Data.Seeders.SellerAccountSeeder.InitializeAsync(app.Services);
+    await GlowCare.API.Data.Seeders.DemoAccountSeeder.InitializeAsync(app.Services);
 }
 
 app.UseSwagger();

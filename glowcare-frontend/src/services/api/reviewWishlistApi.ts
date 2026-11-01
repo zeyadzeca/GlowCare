@@ -5,7 +5,8 @@ import type { Review, ReviewRequest, ReviewSummary, Wishlist, WishlistItem } fro
  * Reviews and wishlist.
  * - Review creation requires the Customer role AND a verified purchase
  *   (both enforced server-side).
- * - Wishlist endpoints require the Customer role; there is no guest wishlist.
+ * - Authenticated wishlist endpoints require the Customer role.
+ * - Guests persist a local wishlist; it is merged after login.
  */
 
 /* ----------------------------- Reviews ----------------------------- */
@@ -56,6 +57,11 @@ export async function addToWishlist(productId: number): Promise<Wishlist> {
 /** DELETE /api/wishlist/items/{itemId} - removes one saved product. */
 export async function removeFromWishlist(itemId: number): Promise<void> {
   await api.delete(`/wishlist/items/${itemId}`)
+}
+
+/** DELETE /api/wishlist/products/{productId} - toggle-friendly remove. */
+export async function removeProductFromWishlist(productId: number): Promise<void> {
+  await api.delete(`/wishlist/products/${productId}`)
 }
 
 export type { WishlistItem }

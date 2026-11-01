@@ -3,12 +3,37 @@ import { Link, useNavigate } from 'react-router-dom'
 import { orderApi, promoBannerApi, userApi } from '@/services/api'
 import { useCart } from '@/context/CartContext'
 import { PaymentMethod } from '@/types/enums'
-import type { Address, OrderSummary } from '@/types/api.types'
+import type { Address, AddressRequest, OrderSummary } from '@/types/api.types'
 import { formatPrice } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/FormField'
 import { EmptyState, Spinner } from '@/components/common/States'
+
+const emptyAddress: AddressRequest = { city: '', street: '', buildingNumber: '' }
+
+function trimAddress(form: AddressRequest): AddressRequest {
+  return {
+    city: form.city.trim(),
+    street: form.street.trim(),
+    buildingNumber: form.buildingNumber.trim(),
+  }
+}
+
+function isCompleteAddress(form: AddressRequest): boolean {
+  const trimmed = trimAddress(form)
+  return Boolean(trimmed.city && trimmed.street && trimmed.buildingNumber)
+}
+
+function sameAddress(a: AddressRequest, b: AddressRequest): boolean {
+  const left = trimAddress(a)
+  const right = trimAddress(b)
+  return (
+    left.city.toLowerCase() === right.city.toLowerCase() &&
+    left.street.toLowerCase() === right.street.toLowerCase() &&
+    left.buildingNumber.toLowerCase() === right.buildingNumber.toLowerCase()
+  )
+}
 
 export function CheckoutPage() {
   const { cart, loading: cartLoading, refresh, isGuest } = useCart()
@@ -16,19 +41,29 @@ export function CheckoutPage() {
 
   const [addresses, setAddresses] = useState<Address[]>([])
   const [addressId, setAddressId] = useState<number | ''>('')
-  const [newAddress, setNewAddress] = useState({ city: '', street: '', buildingNumber: '' })
+  const [newAddress, setNewAddress] = useState<AddressRequest>(emptyAddress)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [promoCode, setPromoCode] = useState('')
   const [promoNotice, setPromoNotice] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CashOnDelivery)
   const [summary, setSummary] = useState<OrderSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [addressBusy, setAddressBusy] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const selectAddress = useCallback((id: number) => {
+    setAddressId(id)
+    setError(null)
+  }, [])
 
   const loadAddresses = useCallback(async () => {
     const list = await userApi.getAddresses()
     setAddresses(list)
-    setAddressId((current) => (current === '' && list[0] ? list[0].id : current))
+    setAddressId((current) => {
+      if (current !== '' && list.some((address) => address.id === current)) return current
+      return list[0]?.id ?? ''
+    })
   }, [])
 
   useEffect(() => {
@@ -69,15 +104,61 @@ export function CheckoutPage() {
     void preview()
   }, [preview])
 
-  async function addAddress() {
+  function applySavedAddress(saved: Address) {
+    setAddresses((list) => {
+      const exists = list.some((address) => address.id === saved.id)
+      return exists ? list.map((address) => (address.id === saved.id ? saved : address)) : [...list, saved]
+    })
+    selectAddress(saved.id)
+    setNewAddress(emptyAddress)
+    setEditingId(null)
+  }
+
+  async function persistDraft(): Promise<Address | null> {
+    const payload = trimAddress(newAddress)
+    if (!isCompleteAddress(payload)) {
+      setError('Enter city, street, and building number.')
+      return null
+    }
+
+    const duplicate = addresses.find((address) => address.id !== editingId && sameAddress(address, payload))
+    if (duplicate && editingId === null) {
+      applySavedAddress(duplicate)
+      return duplicate
+    }
+
+    setAddressBusy(true)
     setError(null)
     try {
-      const created = await userApi.addAddress(newAddress)
-      setNewAddress({ city: '', street: '', buildingNumber: '' })
-      await loadAddresses()
-      setAddressId(created.id)
+      const saved = editingId
+        ? await userApi.updateAddress(editingId, payload)
+        : await userApi.addAddress(payload)
+      applySavedAddress(saved)
+      return saved
     } catch (err) {
       setError(getErrorMessage(err, 'Could not save the address.'))
+      return null
+    } finally {
+      setAddressBusy(false)
+    }
+  }
+
+  async function removeAddress(id: number) {
+    setAddressBusy(true)
+    setError(null)
+    try {
+      await userApi.deleteAddress(id)
+      const remaining = addresses.filter((address) => address.id !== id)
+      setAddresses(remaining)
+      setAddressId((current) => (current === id ? remaining[0]?.id ?? '' : current))
+      if (editingId === id) {
+        setEditingId(null)
+        setNewAddress(emptyAddress)
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not delete the address.'))
+    } finally {
+      setAddressBusy(false)
     }
   }
 
@@ -98,14 +179,21 @@ export function CheckoutPage() {
 
   async function placeOrder(event: FormEvent) {
     event.preventDefault()
-    if (addressId === '') {
-      setError('Choose a shipping address.')
-      return
+    let selectedId = addressId
+    if (selectedId === '') {
+      if (!isCompleteAddress(newAddress)) {
+        setError('Choose a shipping address or enter a new one.')
+        return
+      }
+      const saved = await persistDraft()
+      if (!saved) return
+      selectedId = saved.id
     }
+
     setSubmitting(true)
     setError(null)
     const payload = {
-      addressId,
+      addressId: selectedId,
       paymentMethod,
       promoCode: promoCode.trim() || null,
     }
@@ -154,6 +242,8 @@ export function CheckoutPage() {
     )
   }
 
+  const busy = submitting || addressBusy
+
   return (
     <div className="shell py-10">
       <h1 className="heading-display uppercase">Checkout</h1>
@@ -170,7 +260,7 @@ export function CheckoutPage() {
           <section className="card p-6">
             <h2 className="font-display text-xl text-royal">Shipping address</h2>
             {addresses.length === 0 ? (
-              <p className="mt-2 text-sm text-navy/70">Add an address to continue.</p>
+              <p className="mt-2 text-sm text-navy/70">Add an address to continue, or enter one below and proceed.</p>
             ) : (
               <ul className="mt-4 space-y-2">
                 {addresses.map((address) => (
@@ -180,12 +270,38 @@ export function CheckoutPage() {
                         type="radio"
                         name="address"
                         checked={addressId === address.id}
-                        onChange={() => setAddressId(address.id)}
+                        onChange={() => selectAddress(address.id)}
                         className="mt-1"
                       />
-                      <span>
+                      <span className="flex-1">
                         <span className="font-semibold text-navy">{address.street}, {address.buildingNumber}</span>
                         <span className="block text-sm text-navy/60">{address.city}</span>
+                      </span>
+                      <span className="flex gap-2">
+                        <button
+                          type="button"
+                          className="text-sm font-semibold text-royal"
+                          disabled={addressBusy}
+                          onClick={() => {
+                            setEditingId(address.id)
+                            setNewAddress({
+                              city: address.city,
+                              street: address.street,
+                              buildingNumber: address.buildingNumber,
+                            })
+                            selectAddress(address.id)
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="text-sm text-navy/60"
+                          disabled={addressBusy}
+                          onClick={() => void removeAddress(address.id)}
+                        >
+                          Delete
+                        </button>
                       </span>
                     </label>
                   </li>
@@ -194,15 +310,31 @@ export function CheckoutPage() {
             )}
 
             <div className="mt-6 border-t border-navy/10 pt-4">
-              <p className="text-sm font-semibold text-royal">Add address</p>
+              <p className="text-sm font-semibold text-royal">{editingId ? 'Edit address' : 'Add address'}</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <Input label="City" required value={newAddress.city} onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })} />
-                <Input label="Street" required value={newAddress.street} onChange={(e) => setNewAddress({ ...newAddress, street: e.target.value })} />
-                <Input label="Building" required value={newAddress.buildingNumber} onChange={(e) => setNewAddress({ ...newAddress, buildingNumber: e.target.value })} />
+                <Input label="City" value={newAddress.city} onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })} />
+                <Input label="Street" value={newAddress.street} onChange={(e) => setNewAddress({ ...newAddress, street: e.target.value })} />
+                <Input label="Building" value={newAddress.buildingNumber} onChange={(e) => setNewAddress({ ...newAddress, buildingNumber: e.target.value })} />
               </div>
-              <Button type="button" variant="ghost" className="py-2 text-sm" onClick={() => void addAddress()}>
-                Save address
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="ghost" className="py-2 text-sm" loading={addressBusy} disabled={busy} onClick={() => void persistDraft()}>
+                  {editingId ? 'Update address' : 'Save address'}
+                </Button>
+                {editingId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="py-2 text-sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setEditingId(null)
+                      setNewAddress(emptyAddress)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </div>
           </section>
 
@@ -276,10 +408,10 @@ export function CheckoutPage() {
               <p className="text-xs text-navy/50">Free shipping from {formatPrice(summary.freeShippingThreshold)}.</p>
             </dl>
           ) : (
-            <p className="mt-4 text-sm text-navy/60">Select an address to see server-calculated totals.</p>
+            <p className="mt-4 text-sm text-navy/60">Select or save an address to see server-calculated totals.</p>
           )}
 
-          <Button type="submit" loading={submitting} disabled={addressId === ''} className="mt-6 w-full">
+          <Button type="submit" loading={submitting} disabled={busy || (addressId === '' && !isCompleteAddress(newAddress))} className="mt-6 w-full">
             {paymentMethod === PaymentMethod.CreditCard ? 'Pay with card' : 'Place COD order'}
           </Button>
           <Link to="/cart" className="mt-3 block text-center text-sm font-semibold text-royal hover:underline">

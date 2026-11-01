@@ -33,6 +33,27 @@ public class BrandService : IBrandService
             })
             .ToListAsync();
 
+    public async Task<IList<BrandDto>> GetFeaturedBrandsAsync(int limit)
+        => await _db.Brands.AsNoTracking()
+            .Select(b => new
+            {
+                Brand = b,
+                ProductCount = b.Products.Count(p => p.IsActive)
+            })
+            .Where(x => x.ProductCount > 0)
+            .OrderByDescending(x => x.ProductCount)
+            .ThenBy(x => x.Brand.Name)
+            .Select(x => new BrandDto
+            {
+                Id = x.Brand.Id,
+                Name = x.Brand.Name,
+                Description = x.Brand.Description,
+                Logo = x.Brand.Logo,
+                ProductCount = x.ProductCount
+            })
+            .Take(limit)
+            .ToListAsync();
+
     public async Task<BrandDto?> GetByIdAsync(int id)
         => await _db.Brands.AsNoTracking()
             .Where(b => b.Id == id)

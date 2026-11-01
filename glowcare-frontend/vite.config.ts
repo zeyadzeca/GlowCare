@@ -13,15 +13,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    allowedHosts: ['dentist-residue-appliance.ngrok-free.dev'],
+    allowedHosts: ['dentist-residue-appliance.ngrok-free.dev'
+      ,'outboard-glutinous-clinic.ngrok-free.dev'],
     // The React dev server proxies /api to the backend so we call a same-origin
     // path in development (no CORS headaches). In production the built app uses
     // the absolute VITE_API_URL instead - see src/services/api/client.ts.
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5205',
-        changeOrigin: true,
-      },
-    },
+   proxy: {
+  '/api': {
+    target: 'http://localhost:5205',
+    changeOrigin: true,
+  },
+},
   },
 })

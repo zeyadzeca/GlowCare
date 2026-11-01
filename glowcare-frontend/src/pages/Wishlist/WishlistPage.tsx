@@ -1,58 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { reviewWishlistApi } from '@/services/api'
-import type { Wishlist } from '@/types/api.types'
+import { useWishlist } from '@/context/WishlistContext'
 import { formatPrice } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
-import { EmptyState, ErrorState, Spinner } from '@/components/common/States'
+import { EmptyState, Spinner } from '@/components/common/States'
 import { Button } from '@/components/common/Button'
+import { useState } from 'react'
 
 export function WishlistPage() {
-  const [wishlist, setWishlist] = useState<Wishlist | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { items, loading, isPending, remove } = useWishlist()
   const [error, setError] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<number | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  async function handleRemove(productId: number) {
     setError(null)
     try {
-      setWishlist(await reviewWishlistApi.getWishlist())
-    } catch (err) {
-      setError(getErrorMessage(err, 'Could not load your wishlist.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
-
-  async function remove(itemId: number) {
-    setBusyId(itemId)
-    try {
-      await reviewWishlistApi.removeFromWishlist(itemId)
-      setWishlist((current) =>
-        current ? { ...current, items: current.items.filter((item) => item.id !== itemId) } : current,
-      )
+      await remove(productId)
     } catch (err) {
       setError(getErrorMessage(err))
-    } finally {
-      setBusyId(null)
     }
   }
 
   if (loading) return <div className="shell"><Spinner label="Loading wishlist..." /></div>
-  if (error && !wishlist) {
-    return (
-      <div className="shell py-12">
-        <ErrorState message={error} onRetry={() => void load()} />
-      </div>
-    )
-  }
-
-  const items = wishlist?.items ?? []
 
   return (
     <div className="shell py-10">
@@ -72,7 +39,7 @@ export function WishlistPage() {
       ) : (
         <ul className="mt-8 grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
           {items.map((item) => (
-            <li key={item.id} className="card overflow-hidden">
+            <li key={item.productId} className="card overflow-hidden">
               <Link to={`/products/${item.productId}`} className="block aspect-square bg-sky/40">
                 {item.mainImageUrl ? (
                   <img src={item.mainImageUrl} alt={item.productName} className="h-full w-full object-cover" />
@@ -89,8 +56,8 @@ export function WishlistPage() {
                 <Button
                   variant="ghost"
                   className="mt-3 w-full py-2 text-sm"
-                  disabled={busyId === item.id}
-                  onClick={() => void remove(item.id)}
+                  disabled={isPending(item.productId)}
+                  onClick={() => void handleRemove(item.productId)}
                 >
                   Remove
                 </Button>

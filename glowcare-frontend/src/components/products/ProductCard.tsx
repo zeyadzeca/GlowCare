@@ -7,30 +7,28 @@ import { getErrorMessage } from '@/utils/errors'
 import { StarRating } from '@/components/common/StarRating'
 import { useAuth } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
-import { reviewWishlistApi } from '@/services/api'
+import { toWishlistSnapshot, useWishlist } from '@/context/WishlistContext'
 
 interface ProductCardProps {
   product: ProductListItem
-  isInWishlist?: boolean
-  onWishlistChange?: (productId: number, isWishlisted: boolean) => void
 }
 
 /**
  * Product card used on the home page, product grid and wishlist.
  *
- * Guest rules (enforced by the backend, mirrored here for UX):
- * - Guests can VIEW the card and open the details page.
- * - Guests CAN add to cart (guest cart), but CANNOT add to wishlist.
+ * Guests can add to cart and wishlist (local). Authenticated customers use the API.
  */
-export function ProductCard({ product, isInWishlist = false, onWishlistChange }: ProductCardProps) {
+export function ProductCard({ product }: ProductCardProps) {
   const { isAuthenticated, hasRole } = useAuth()
   const { addItem } = useCart()
+  const { isInWishlist, isPending, toggle } = useWishlist()
 
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [wishlisted, setWishlisted] = useState(isInWishlist)
 
   const isCustomer = hasRole('Customer')
+  const wishlisted = isInWishlist(product.id)
+  const wishlistBusy = isPending(product.id)
 
   async function handleAddToCart() {
     setNotice(null)
@@ -45,37 +43,17 @@ export function ProductCard({ product, isInWishlist = false, onWishlistChange }:
     }
   }
 
-  async function handleAddToWishlist() {
+  async function handleToggleWishlist() {
     setNotice(null)
-    if (!isCustomer) {
+    if (isAuthenticated && !isCustomer) {
       setNotice('Please sign in as a customer to save items.')
       return
     }
-    setBusy(true)
     try {
-      await reviewWishlistApi.addToWishlist(product.id)
-      setWishlisted(true)
-      onWishlistChange?.(product.id, true)
-      setNotice('Saved to wishlist.')
+      await toggle(toWishlistSnapshot(product))
+      setNotice(wishlisted ? 'Removed from wishlist.' : 'Saved to wishlist.')
     } catch (error) {
       setNotice(getErrorMessage(error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleRemoveFromWishlist() {
-    setNotice(null)
-    setBusy(true)
-    try {
-      await reviewWishlistApi.removeFromWishlist(product.id)
-      setWishlisted(false)
-      onWishlistChange?.(product.id, false)
-      setNotice('Removed from wishlist.')
-    } catch (error) {
-      setNotice(getErrorMessage(error))
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -134,10 +112,10 @@ export function ProductCard({ product, isInWishlist = false, onWishlistChange }:
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={wishlisted ? handleRemoveFromWishlist : handleAddToWishlist}
-              disabled={busy}
+              onClick={() => void handleToggleWishlist()}
+              disabled={busy || wishlistBusy}
               className="icon-btn"
-              aria-label={wishlisted ? 'Remove from wishlist' : isAuthenticated ? 'Save to wishlist' : 'Sign in to save'}
+              aria-label={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
             >
               <Heart className={`h-4 w-4 ${wishlisted ? 'fill-red-500 text-red-500' : ''}`} />
             </button>

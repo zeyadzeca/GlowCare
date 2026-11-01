@@ -81,12 +81,26 @@ public class UserService : IUserService
 
     public async Task<AddressDto> AddAddressAsync(string userId, AddressCreateDto dto)
     {
+        var (city, street, building) = NormalizeAddress(dto.City, dto.Street, dto.BuildingNumber);
+
+        var existing = await _db.Addresses
+            .FirstOrDefaultAsync(a =>
+                a.UserId == userId
+                && a.City == city
+                && a.Street == street
+                && a.BuildingNumber == building);
+
+        if (existing is not null)
+        {
+            return ToDto(existing);
+        }
+
         var address = new Address
         {
             UserId = userId,
-            City = dto.City,
-            Street = dto.Street,
-            BuildingNumber = dto.BuildingNumber
+            City = city,
+            Street = street,
+            BuildingNumber = building
         };
 
         _db.Addresses.Add(address);
@@ -97,8 +111,8 @@ public class UserService : IUserService
 
     public async Task<AddressDto?> UpdateAddressAsync(string userId, int addressId, AddressUpdateDto dto)
     {
-        // The .AnyAsync check proves the address belongs to THIS user before
-        // we touch it - ownership is enforced, not just assumed.
+        var (city, street, building) = NormalizeAddress(dto.City, dto.Street, dto.BuildingNumber);
+
         var address = await _db.Addresses
             .FirstOrDefaultAsync(a => a.Id == addressId && a.UserId == userId);
 
@@ -107,9 +121,9 @@ public class UserService : IUserService
             return null; // not found or not owned by this user
         }
 
-        address.City = dto.City;
-        address.Street = dto.Street;
-        address.BuildingNumber = dto.BuildingNumber;
+        address.City = city;
+        address.Street = street;
+        address.BuildingNumber = building;
 
         await _db.SaveChangesAsync();
 
@@ -183,6 +197,21 @@ public class UserService : IUserService
     // ------------------------------------------------------------------
     // Mapping helpers (entities never leave the service layer)
     // ------------------------------------------------------------------
+
+    private static (string City, string Street, string Building) NormalizeAddress(
+        string city, string street, string buildingNumber)
+    {
+        var cityValue = city.Trim();
+        var streetValue = street.Trim();
+        var buildingValue = buildingNumber.Trim();
+
+        if (string.IsNullOrEmpty(cityValue) || string.IsNullOrEmpty(streetValue) || string.IsNullOrEmpty(buildingValue))
+        {
+            throw new AppException("City, street, and building number are required.", 400);
+        }
+
+        return (cityValue, streetValue, buildingValue);
+    }
 
     private static AddressDto ToDto(Address a) => new()
     {

@@ -40,4 +40,16 @@ public class WishlistsController : ControllerBase
 
         return Ok(new { message = "Item removed from wishlist." });
     }
+
+    /// <summary>Removes a product from the wishlist by product id.</summary>
+    [HttpDelete("products/{productId:int}")]
+    public async Task<IActionResult> RemoveProduct(int productId)
+    {
+        if (!await _wishlists.RemoveItemByProductIdAsync(User.GetUserId()!, productId))
+        {
+            return NotFound(new { statusCode = 404, message = $"Product {productId} was not on the wishlist." });
+        }
+
+        return Ok(new { message = "Item removed from wishlist." });
+    }
 }

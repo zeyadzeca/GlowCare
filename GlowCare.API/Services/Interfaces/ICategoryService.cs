@@ -8,6 +8,9 @@ public interface ICategoryService
     /// <summary>All categories with their active product counts (public).</summary>
     Task<IList<CategoryDto>> GetCategoriesAsync();
 
+    /// <summary>Featured categories for homepage (sorted by product count, then name).</summary>
+    Task<IList<CategoryDto>> GetFeaturedCategoriesAsync(int limit);
+
     Task<CategoryDto?> GetByIdAsync(int id);
 
     Task<CategoryDto> CreateAsync(CategoryCreateDto dto);

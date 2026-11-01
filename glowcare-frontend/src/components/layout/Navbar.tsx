@@ -100,20 +100,20 @@ export function Navbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
+          {(isCustomer || !isAuthenticated) && (
+            <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">
+              <Heart className="h-5 w-5" />
+            </Link>
+          )}
           {isCustomer && (
-            <>
-              <Link to="/wishlist" className="icon-btn" aria-label="Wishlist">
-                <Heart className="h-5 w-5" />
-              </Link>
-              <Link to="/cart" className="icon-btn relative" aria-label="Cart">
-                <ShoppingBag className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow px-1 text-[10px] font-bold text-royal">
-                    {itemCount}
-                  </span>
-                )}
-              </Link>
-            </>
+            <Link to="/cart" className="icon-btn relative" aria-label="Cart">
+              <ShoppingBag className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow px-1 text-[10px] font-bold text-royal">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
           )}
 
           {isSeller && (

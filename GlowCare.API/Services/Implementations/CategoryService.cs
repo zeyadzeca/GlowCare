@@ -34,6 +34,27 @@ public class CategoryService : ICategoryService
             })
             .ToListAsync();
 
+    public async Task<IList<CategoryDto>> GetFeaturedCategoriesAsync(int limit)
+        => await _db.Categories.AsNoTracking()
+            .Select(c => new
+            {
+                Category = c,
+                ProductCount = c.Products.Count(p => p.IsActive)
+            })
+            .Where(x => x.ProductCount > 0)
+            .OrderByDescending(x => x.ProductCount)
+            .ThenBy(x => x.Category.Name)
+            .Select(x => new CategoryDto
+            {
+                Id = x.Category.Id,
+                Name = x.Category.Name,
+                Description = x.Category.Description,
+                ImageUrl = x.Category.ImageUrl,
+                ProductCount = x.ProductCount
+            })
+            .Take(limit)
+            .ToListAsync();
+
     public async Task<CategoryDto?> GetByIdAsync(int id)
         => await _db.Categories.AsNoTracking()
             .Where(c => c.Id == id)

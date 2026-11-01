@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronRight, Heart, Minus, Plus, ShieldCheck, ShoppingBag, Truck } from 'lucide-react'
-import { catalogApi, reviewWishlistApi } from '@/services/api'
+import { catalogApi } from '@/services/api'
 import { useAuth } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
+import { toWishlistSnapshot, useWishlist } from '@/context/WishlistContext'
 import type { ProductDetails, ProductListItem } from '@/types/api.types'
 import { formatPrice } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
@@ -32,6 +33,7 @@ export function ProductDetailsPage() {
 
   const { isAuthenticated, user, hasRole } = useAuth()
   const { addItem } = useCart()
+  const { isInWishlist, isPending, toggle } = useWishlist()
   const isCustomer = hasRole('Customer')
 
   const [product, setProduct] = useState<ProductDetails | null>(null)
@@ -91,20 +93,19 @@ export function ProductDetailsPage() {
     }
   }
 
-  async function handleAddToWishlist() {
+  async function handleToggleWishlist() {
     setNotice(null)
-    if (!isCustomer) {
+    if (isAuthenticated && !isCustomer) {
       setNotice('Please sign in as a customer to save items.')
       return
     }
-    setBusy(true)
+    if (!product) return
+    const wishlisted = isInWishlist(product.id)
     try {
-      await reviewWishlistApi.addToWishlist(productId)
-      setNotice('Saved to your wishlist.')
+      await toggle(toWishlistSnapshot(product))
+      setNotice(wishlisted ? 'Removed from your wishlist.' : 'Saved to your wishlist.')
     } catch (err) {
       setNotice(getErrorMessage(err))
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -304,11 +305,12 @@ export function ProductDetailsPage() {
 
             <Button
               variant="accent"
-              onClick={() => void handleAddToWishlist()}
-              disabled={busy}
-              aria-label={isAuthenticated ? 'Save to wishlist' : 'Sign in to save'}
+              onClick={() => void handleToggleWishlist()}
+              disabled={busy || isPending(product.id)}
+              aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
             >
-              <Heart className="h-4 w-4" /> Wishlist
+              <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
+              {isInWishlist(product.id) ? 'Saved' : 'Wishlist'}
             </Button>
           </div>
 
