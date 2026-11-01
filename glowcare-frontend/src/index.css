@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Base layer: normalise a few defaults and set the GlowCare typography.
+   Headings use the condensed Oswald display font (oversized + bold, matching
+   the reference), body text uses Inter. Colours all come from the tokens in
+   tailwind.config.ts (yellow #FAEB68, blue #3162AF, off-white #F7F8F1,
+   sky #93D1F5, white).
+--------------------------------------------------------------------------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-off-white text-navy antialiased;
+    font-family: theme('fontFamily.sans');
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: 0.005em;
+  }
+
+  /* Reference headings are heavy + condensed; make that the default. */
+  h1,
+  h2 {
+    @apply font-bold;
+  }
+
+  /* Selection uses the identity yellow behind deep blue ink. */
+  ::selection {
+    @apply bg-yellow text-navy;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Component layer: small reusable pieces used across every page.
+--------------------------------------------------------------------------- */
+@layer components {
+  /* Centered page shell matching the reference layout width. */
+  .shell {
+    @apply mx-auto w-full max-w-shell px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Oversized, condensed, BLUE editorial heading - the signature of the
+     reference ("Transparency is the New Luxury.", "Beauty, Backed by
+     Innovation."). Never render section headings small or grey. */
+  .heading-display {
+    @apply font-display font-bold text-royal;
+    font-size: clamp(2rem, 4.5vw, 3.75rem);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+  }
+
+  /* Slightly smaller sibling for card/panel titles. */
+  .heading-panel {
+    @apply font-display font-bold text-royal;
+    font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+    line-height: 1.05;
+  }
+
+  /* Inline yellow highlight behind blue text (editorial emphasis). */
+  .highlight-yellow {
+    @apply box-decoration-clone bg-yellow px-2 text-royal;
+  }
+
+  /* ---- Buttons --------------------------------------------------------- */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3
+           font-semibold transition-colors focus:outline-none focus:ring-2
+           focus:ring-royal/40 focus:ring-offset-2 focus:ring-offset-off-white
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* Primary CTA - Primary Blue fill, white label (reference accents). */
+  .btn-primary {
+    @apply btn bg-royal text-white hover:bg-royal-dark;
+  }
+
+  /* Secondary CTA - Primary Yellow fill with blue ink label. */
+  .btn-accent {
+    @apply btn bg-yellow text-royal hover:bg-yellow-deep;
+  }
+
+  /* White pill CTA - reference "Explore Now" style. Border keeps it visible
+     on off-white/white surfaces as well as on the yellow blocks. */
+  .btn-light {
+    @apply btn border border-royal/20 bg-white text-royal shadow-sm
+           hover:border-royal/50 hover:bg-off-white;
+  }
+
+  /* Outlined CTA. */
+  .btn-ghost {
+    @apply btn border border-royal/30 bg-transparent text-royal
+           hover:border-royal hover:bg-royal/5;
+  }
+
+  /* ---- Surfaces -------------------------------------------------------- */
+
+  /* Clean white content card on the off-white page background. */
+  .card {
+    @apply rounded-2xl bg-white shadow-sm;
+  }
+
+  .card-hover {
+    @apply card transition-shadow hover:shadow-lg;
+  }
+
+  /* ---- Forms ----------------------------------------------------------- */
+
+  .field {
+    @apply w-full rounded-xl border border-navy/15 bg-white px-4 py-3 text-sm
+           text-navy placeholder:text-navy/40 focus:border-royal
+           focus:outline-none focus:ring-2 focus:ring-royal/20;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-navy;
+  }
+
+  /* ---- Navigation ------------------------------------------------------ */
+
+  .nav-link {
+    @apply relative py-1 text-sm font-medium text-navy/70 transition-colors hover:text-royal;
+  }
+
+  .nav-link.active {
+    @apply text-royal;
+  }
+
+  .nav-link.active::after {
+    @apply absolute -bottom-0.5 left-0 h-0.5 w-full rounded bg-royal;
+    content: '';
+  }
+
+  .icon-btn {
+    @apply relative inline-flex h-9 w-9 items-center justify-center rounded-full
+           text-navy transition-colors hover:bg-royal/10 hover:text-royal;
+  }
+
+  /* ---- Organic image shapes (reference imagery) ------------------------ */
+
+  /* Full ellipse - the tall oval portrait frame in the reference. */
+  .shape-ellipse {
+    @apply overflow-hidden rounded-full;
+  }
+
+  /* Softer, slightly irregular blob for hero/editorial imagery. */
+  .shape-organic {
+    border-radius: 62% 38% 57% 43% / 46% 52% 48% 54%;
+  }
+
+  /* ---- Badges ---------------------------------------------------------- */
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs
+           font-semibold;
+  }
+}

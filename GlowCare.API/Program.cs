@@ -182,6 +182,9 @@ if (app.Environment.IsDevelopment())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
     await SeedData.InitializeAsync(app.Services);
+    // Fixed academic demo seller accounts (Development only - permanent demo
+    // credentials, never seeded in production).
+    await GlowCare.API.Data.Seeders.SellerAccountSeeder.InitializeAsync(app.Services);
 }
 
 app.UseSwagger();
