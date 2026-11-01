@@ -69,17 +69,28 @@ public class PaymentService : IPaymentService
 
     public async Task<PaymentInitiationDto> InitiatePaymobPaymentAsync(string userId, CheckoutDto dto)
     {
-        if (dto.PaymentMethod != PaymentMethod.CreditCard)
+        if (dto.PaymentMethod != PaymentMethod.CreditCard && dto.PaymentMethod != PaymentMethod.MobileWallet)
         {
             throw new AppException("Use the orders endpoint for cash-on-delivery orders.", 400);
         }
 
+        var integrationId = dto.PaymentMethod == PaymentMethod.CreditCard
+            ? _paymob.CardIntegrationId
+            : _paymob.WalletIntegrationId;
+
+        if (integrationId <= 0)
+        {
+            throw new AppException(
+                dto.PaymentMethod == PaymentMethod.CreditCard
+                    ? "Card payments are not configured. Set Paymob:CardIntegrationId in User Secrets."
+                    : "Mobile wallet payments are not configured. Set Paymob:WalletIntegrationId in User Secrets.",
+                503);
+        }
+
         if (!_paymob.IsConfigured)
         {
-            // Dev machines without credentials get a clear message instead of a
-            // mysterious 500. Secrets go into User Secrets (see docs comment).
             throw new AppException(
-                "Card payments are not configured. Set Paymob:ApiSecretKey, Paymob:PublicKey and Paymob:IntegrationId (dotnet user-secrets set ...).",
+                "Paymob credentials are not configured. Set Paymob:ApiSecretKey, Paymob:PublicKey and Paymob:HmacSecret in User Secrets.",
                 503);
         }
 
@@ -169,7 +180,7 @@ public class PaymentService : IPaymentService
             // If Paymob rejects the request we throw, the transaction disposes
             // and the whole order/stock/cart changes roll back.
             var user = await _db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
-            var intention = await CreateIntentionAsync(order, user, ctx);
+            var intention = await CreateIntentionAsync(order, user, ctx, dto.PaymentMethod);
 
             if (intention.IntentionOrderId is null)
             {
@@ -180,7 +191,7 @@ public class PaymentService : IPaymentService
             }
 
             payment.PaymobOrderId = intention.IntentionOrderId.Value.ToString(CultureInfo.InvariantCulture);
-            payment.PaymobIntegrationId = _paymob.IntegrationId;
+            payment.PaymobIntegrationId = integrationId;
             await SaveInsideTransactionAsync();
 
             await transaction.CommitAsync();
@@ -351,15 +362,18 @@ public class PaymentService : IPaymentService
     /// Returns the client_secret used to open the hosted checkout page.
     /// </summary>
     private async Task<PaymobIntentionResponseDto> CreateIntentionAsync(
-        Order order, ApplicationUser user, CheckoutContext ctx)
+        Order order, ApplicationUser user, CheckoutContext ctx, PaymentMethod paymentMethod)
     {
         var amountCents = (long)Math.Round(order.TotalAmount * 100m, 0, MidpointRounding.AwayFromZero);
+        var integrationId = paymentMethod == PaymentMethod.CreditCard
+            ? _paymob.CardIntegrationId
+            : _paymob.WalletIntegrationId;
 
         var request = new PaymobIntentionRequestDto
         {
             Amount = amountCents,
             Currency = _store.Currency,
-            PaymentMethods = new[] { _paymob.IntegrationId },
+            PaymentMethods = new[] { integrationId },
             // One line item for the full amount: Paymob requires item amounts to
             // sum exactly to the total (itemized lines would need discount and
             // rounding adjustments to still match).

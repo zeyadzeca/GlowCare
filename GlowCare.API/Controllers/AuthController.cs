@@ -27,4 +27,20 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
         => Ok(await _auth.LoginAsync(dto));
+
+    /// <summary>Initiates password reset - generates a token (in production, this would send an email).</summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+    {
+        await _auth.ForgotPasswordAsync(dto);
+        return Ok(new { message = "If an account with this email exists, a password reset link has been sent." });
+    }
+
+    /// <summary>Resets password using the token from forgot-password.</summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+    {
+        await _auth.ResetPasswordAsync(dto);
+        return Ok(new { message = "Password has been reset successfully." });
+    }
 }

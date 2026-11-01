@@ -27,8 +27,14 @@ public class PaymobSettings
     /// <summary>Not secret (but per-account). Public key used in the hosted checkout URL.</summary>
     public string PublicKey { get; set; } = string.Empty;
 
-    /// <summary>The card payment integration id configured in the Paymob dashboard.</summary>
+    /// <summary>Deprecated: kept for backward compatibility. Use CardIntegrationId and WalletIntegrationId instead.</summary>
     public int IntegrationId { get; set; }
+
+    /// <summary>The card payment integration id configured in the Paymob dashboard.</summary>
+    public int CardIntegrationId { get; set; }
+
+    /// <summary>The mobile wallet payment integration id configured in the Paymob dashboard.</summary>
+    public int WalletIntegrationId { get; set; }
 
     /// <summary>SECRET. HMAC-SHA512 secret used to verify callback authenticity.</summary>
     public string HmacSecret { get; set; } = string.Empty;
@@ -36,16 +42,35 @@ public class PaymobSettings
     /// <summary>
     /// Optional. Public URL Paymob POSTs transaction callbacks to. When empty,
     /// the webhook configured in the Paymob dashboard is used instead.
+    /// Required for production callbacks. Can be omitted for local development.
     /// </summary>
     public string CallbackUrl { get; set; } = string.Empty;
 
-    /// <summary>Optional. Where Paymob redirects the customer's browser after payment.</summary>
+    /// <summary>
+    /// Optional. Where Paymob redirects the customer's browser after payment.
+    /// Required for production redirect handling. Can be omitted for local development.
+    /// </summary>
     public string RedirectionUrl { get; set; } = string.Empty;
 
-    /// <summary>True only when every value required to take a card payment is present.</summary>
+    /// <summary>True when credentials are configured for at least one payment method.</summary>
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(BaseUrl) &&
         !string.IsNullOrWhiteSpace(ApiSecretKey) &&
         !string.IsNullOrWhiteSpace(PublicKey) &&
-        IntegrationId > 0;
+        !string.IsNullOrWhiteSpace(HmacSecret) &&
+        (CardIntegrationId > 0 || WalletIntegrationId > 0);
+
+    /// <summary>True when card payments are configured.</summary>
+    public bool IsCardConfigured =>
+        CardIntegrationId > 0 &&
+        !string.IsNullOrWhiteSpace(BaseUrl) &&
+        !string.IsNullOrWhiteSpace(ApiSecretKey) &&
+        !string.IsNullOrWhiteSpace(PublicKey);
+
+    /// <summary>True when wallet payments are configured.</summary>
+    public bool IsWalletConfigured =>
+        WalletIntegrationId > 0 &&
+        !string.IsNullOrWhiteSpace(BaseUrl) &&
+        !string.IsNullOrWhiteSpace(ApiSecretKey) &&
+        !string.IsNullOrWhiteSpace(PublicKey);
 }

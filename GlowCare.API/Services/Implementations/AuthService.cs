@@ -12,18 +12,20 @@ using System.Text;
 namespace GlowCare.API.Services.Implementations;
 
 /// <summary>
-/// Handles customer registration, login and JWT token generation.
+/// Handles customer registration, login, password reset and JWT token generation.
 /// Passwords are hashed by Identity (never stored or logged in plain text).
 /// </summary>
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly JwtSettings _jwtSettings;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(UserManager<ApplicationUser> userManager, IOptions<JwtSettings> jwtSettings)
+    public AuthService(UserManager<ApplicationUser> userManager, IOptions<JwtSettings> jwtSettings, ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _jwtSettings = jwtSettings.Value;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -74,6 +76,53 @@ public class AuthService : IAuthService
         await _userManager.ResetAccessFailedCountAsync(user);
 
         return await BuildAuthResponseAsync(user);
+    }
+
+    public async Task ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+
+        if (user is null)
+        {
+            // Return success even if user doesn't exist (security best practice)
+            // to prevent email enumeration attacks
+            _logger.LogInformation("Password reset requested for non-existent email: {Email}", dto.Email);
+            return;
+        }
+
+        // Generate password reset token
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        // In production, this would send an email with the reset link
+        // For this academic project, we log the token (NOT recommended for production)
+        _logger.LogInformation(
+            "Password reset token for {Email}: {Token}. In production, send this via email.",
+            dto.Email,
+            token);
+
+        // For now, return success - the frontend can show a message to check email
+        // In a real implementation, you would integrate with an email service like SendGrid
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordDto dto)
+    {
+        var user = await _userManager.FindByEmailAsync(dto.Email);
+
+        if (user is null)
+        {
+            throw new AppException("Invalid email or reset token.", 400);
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            throw new AppException(
+                string.Join(" ", result.Errors.Select(e => e.Description)),
+                400);
+        }
+
+        _logger.LogInformation("Password reset successful for {Email}", dto.Email);
     }
 
     // ------------------------------------------------------------------
