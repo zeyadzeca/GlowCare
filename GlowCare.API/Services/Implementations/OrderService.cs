@@ -80,6 +80,7 @@ public class OrderService : IOrderService
                 DiscountAmount = summary.DiscountAmount,
                 TotalAmount = summary.TotalAmount,
                 ShippingAddress = ctx.AddressSnapshot,
+                PhoneNumber = dto.PhoneNumber,
                 Status = OrderStatus.Pending,
                 PaymentMethod = PaymentMethod.CashOnDelivery,
                 PaymentStatus = PaymentStatus.Pending,
@@ -350,6 +351,7 @@ public class OrderService : IOrderService
         DiscountAmount = order.DiscountAmount,
         TotalAmount = order.TotalAmount,
         ShippingAddress = order.ShippingAddress,
+        PhoneNumber = order.PhoneNumber,
         PromoCode = order.PromoCode?.Code,
         Items = order.OrderItems.Select(oi => new OrderItemDto
         {

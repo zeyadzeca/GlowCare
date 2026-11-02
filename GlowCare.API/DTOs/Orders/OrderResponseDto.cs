@@ -27,6 +27,8 @@ public class OrderResponseDto
 
     public string ShippingAddress { get; set; } = string.Empty;
 
+    public string PhoneNumber { get; set; } = string.Empty;
+
     public string? PromoCode { get; set; }
 
     public IList<OrderItemDto> Items { get; set; } = new List<OrderItemDto>();

@@ -30,4 +30,7 @@ public interface IPaymentService
 
     /// <summary>One payment record. Null if the payment (and its order) is not owned by the user.</summary>
     Task<PaymentResponseDto?> GetPaymentByIdAsync(string userId, int paymentId);
+
+    /// <summary>All payments (Admin only).</summary>
+    Task<IList<PaymentResponseDto>> GetAllPaymentsAsync();
 }

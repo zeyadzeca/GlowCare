@@ -120,6 +120,28 @@ public class ProductsController : ControllerBase
     // Admin
     // ------------------------------------------------------------------
 
+    /// <summary>Admin creates a product (can assign to any seller).</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("admin")]
+    public async Task<ActionResult<ProductResponseDto>> AdminCreateProduct(ProductCreateDto dto)
+    {
+        var created = await _products.AdminCreateProductAsync(dto);
+        return CreatedAtAction(nameof(GetProduct), new { id = created.Id }, created);
+    }
+
+    /// <summary>Admin updates any product.</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPut("admin/{id:int}")]
+    public async Task<ActionResult<ProductResponseDto>> AdminUpdateProduct(int id, ProductUpdateDto dto)
+    {
+        var updated = await _products.AdminUpdateProductAsync(id, dto);
+        if (updated is null)
+        {
+            return NotFound(new { statusCode = 404, message = $"Product {id} was not found." });
+        }
+        return Ok(updated);
+    }
+
     /// <summary>
     /// Permanently deletes a product (Admin only). Fails with 409 while any
     /// order item references it - purchase history can never be destroyed.

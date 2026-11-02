@@ -36,6 +36,11 @@ public class Order
     [MaxLength(500)]
     public string ShippingAddress { get; set; } = string.Empty;
 
+    /// <summary>Mobile phone number for delivery contact.</summary>
+    [Required]
+    [MaxLength(20)]
+    public string PhoneNumber { get; set; } = string.Empty;
+
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
     public PaymentMethod PaymentMethod { get; set; }

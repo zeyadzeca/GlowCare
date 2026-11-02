@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     // Phase 2: User-related tables
     public DbSet<Address> Addresses => Set<Address>();
+    public DbSet<UserPhoneNumber> UserPhoneNumbers => Set<UserPhoneNumber>();
     public DbSet<SellerProfile> SellerProfiles => Set<SellerProfile>();
 
     // Phase 3: Catalog tables
@@ -96,6 +97,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(a => a.User)
                   .WithMany(u => u.Addresses)
                   .HasForeignKey(a => a.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ------------------------------------------------------------------
+        // UserPhoneNumber: one user can have many phone numbers.
+        // Deleting a user removes their phone numbers.
+        // ------------------------------------------------------------------
+        builder.Entity<UserPhoneNumber>(entity =>
+        {
+            entity.HasOne(p => p.User)
+                  .WithMany(u => u.PhoneNumbers)
+                  .HasForeignKey(p => p.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

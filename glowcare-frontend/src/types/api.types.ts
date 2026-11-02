@@ -207,6 +207,8 @@ export interface ProductSaveRequest {
   ingredientIds: number[]
   /** Only sent on update (soft-delete when false). */
   isActive?: boolean
+  /** Admin can assign sellerId. */
+  sellerId?: string
 }
 
 /* ------------------------------------------------------------------ */
@@ -349,7 +351,7 @@ export interface PromoCode {
   expiryDate: string
   usageLimit: number
   isActive: boolean
-  usageCount: number
+  timesUsed: number
 }
 
 export interface PromoCodeSaveRequest {

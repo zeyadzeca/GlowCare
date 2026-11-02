@@ -1,3 +1,4 @@
+using GlowCare.API.DTOs.User;
 using GlowCare.API.DTOs.Users;
 using GlowCare.API.Helpers;
 using GlowCare.API.Services.Interfaces;
@@ -69,6 +70,39 @@ public class UsersController : ControllerBase
     }
 
     // ------------------------------------------------------------------
+    // Phone Numbers
+    // ------------------------------------------------------------------
+
+    [HttpGet("phone-numbers")]
+    public async Task<ActionResult<IList<UserPhoneNumberDto>>> GetPhoneNumbers()
+        => Ok(await _users.GetPhoneNumbersAsync(User.GetUserId()!));
+
+    [HttpPost("phone-numbers")]
+    public async Task<ActionResult<UserPhoneNumberDto>> AddPhoneNumber(CreatePhoneNumberDto dto)
+        => StatusCode(StatusCodes.Status201Created, await _users.AddPhoneNumberAsync(User.GetUserId()!, dto));
+
+    [HttpPut("phone-numbers/{phoneId:int}")]
+    public async Task<ActionResult<UserPhoneNumberDto>> UpdatePhoneNumber(int phoneId, UpdatePhoneNumberDto dto)
+    {
+        var phone = await _users.UpdatePhoneNumberAsync(User.GetUserId()!, phoneId, dto);
+
+        return phone is null
+            ? NotFound(new { statusCode = 404, message = $"Phone number {phoneId} was not found." })
+            : Ok(phone);
+    }
+
+    [HttpDelete("phone-numbers/{phoneId:int}")]
+    public async Task<IActionResult> DeletePhoneNumber(int phoneId)
+    {
+        if (!await _users.DeletePhoneNumberAsync(User.GetUserId()!, phoneId))
+        {
+            return NotFound(new { statusCode = 404, message = $"Phone number {phoneId} was not found." });
+        }
+
+        return Ok(new { message = "Phone number deleted." });
+    }
+
+    // ------------------------------------------------------------------
     // Seller application
     // ------------------------------------------------------------------
 
@@ -86,5 +120,27 @@ public class UsersController : ControllerBase
         return profile is null
             ? NotFound(new { statusCode = 404, message = "You have no seller profile." })
             : Ok(profile);
+    }
+
+    /// <summary>Update my seller profile (store name, description, logo).</summary>
+    [HttpPut("seller-profile")]
+    public async Task<ActionResult<SellerProfileDto>> UpdateSellerProfile(SellerApplicationDto dto)
+    {
+        var profile = await _users.UpdateSellerProfileAsync(User.GetUserId()!, dto);
+
+        return profile is null
+            ? NotFound(new { statusCode = 404, message = "You have no seller profile." })
+            : Ok(profile);
+    }
+
+    /// <summary>Change my password.</summary>
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+    {
+        var result = await _users.ChangePasswordAsync(User.GetUserId()!, dto);
+
+        return result
+            ? Ok(new { message = "Password changed successfully." })
+            : BadRequest(new { statusCode = 400, message = "Current password is incorrect." });
     }
 }

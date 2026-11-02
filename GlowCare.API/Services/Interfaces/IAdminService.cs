@@ -12,8 +12,11 @@ public interface IAdminService
     /// <summary>Top-line platform statistics for the admin dashboard.</summary>
     Task<AdminDashboardStatsDto> GetDashboardStatsAsync();
 
-    /// <summary>All user accounts with their roles.</summary>
-    Task<IList<UserManagementDto>> GetUsersAsync();
+    /// <summary>All user accounts with their roles. Optional search by name or email.</summary>
+    Task<IList<UserManagementDto>> GetUsersAsync(string? search = null);
+
+    /// <summary>Update user name, email, or lockout status. Returns false if user not found.</summary>
+    Task<bool> UpdateUserAsync(string userId, UpdateUserDto dto);
 
     /// <summary>Grants or removes a role. Returns false if the user does not exist.</summary>
     Task<bool> UpdateUserRoleAsync(string userId, UpdateUserRoleDto dto);

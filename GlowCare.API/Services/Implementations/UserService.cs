@@ -1,4 +1,5 @@
 using GlowCare.API.Data;
+using GlowCare.API.DTOs.User;
 using GlowCare.API.DTOs.Users;
 using GlowCare.API.Helpers;
 using GlowCare.API.Models.Identity;
@@ -147,6 +148,96 @@ public class UserService : IUserService
     }
 
     // ------------------------------------------------------------------
+    // Phone Numbers
+    // ------------------------------------------------------------------
+
+    public async Task<IList<UserPhoneNumberDto>> GetPhoneNumbersAsync(string userId)
+    {
+        return await _db.UserPhoneNumbers
+            .Where(p => p.UserId == userId)
+            .OrderBy(p => p.Id)
+            .Select(p => new UserPhoneNumberDto
+            {
+                Id = p.Id,
+                PhoneNumber = p.PhoneNumber,
+                CreatedAt = p.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<UserPhoneNumberDto> AddPhoneNumberAsync(string userId, CreatePhoneNumberDto dto)
+    {
+        var normalizedPhone = dto.PhoneNumber.Trim();
+
+        var existing = await _db.UserPhoneNumbers
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.PhoneNumber == normalizedPhone);
+
+        if (existing is not null)
+        {
+            return new UserPhoneNumberDto
+            {
+                Id = existing.Id,
+                PhoneNumber = existing.PhoneNumber,
+                CreatedAt = existing.CreatedAt
+            };
+        }
+
+        var phoneNumber = new UserPhoneNumber
+        {
+            UserId = userId,
+            PhoneNumber = normalizedPhone,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.UserPhoneNumbers.Add(phoneNumber);
+        await _db.SaveChangesAsync();
+
+        return new UserPhoneNumberDto
+        {
+            Id = phoneNumber.Id,
+            PhoneNumber = phoneNumber.PhoneNumber,
+            CreatedAt = phoneNumber.CreatedAt
+        };
+    }
+
+    public async Task<UserPhoneNumberDto?> UpdatePhoneNumberAsync(string userId, int phoneId, UpdatePhoneNumberDto dto)
+    {
+        var phoneNumber = await _db.UserPhoneNumbers
+            .FirstOrDefaultAsync(p => p.Id == phoneId && p.UserId == userId);
+
+        if (phoneNumber is null)
+        {
+            return null;
+        }
+
+        phoneNumber.PhoneNumber = dto.PhoneNumber.Trim();
+        await _db.SaveChangesAsync();
+
+        return new UserPhoneNumberDto
+        {
+            Id = phoneNumber.Id,
+            PhoneNumber = phoneNumber.PhoneNumber,
+            CreatedAt = phoneNumber.CreatedAt
+        };
+    }
+
+    public async Task<bool> DeletePhoneNumberAsync(string userId, int phoneId)
+    {
+        var phoneNumber = await _db.UserPhoneNumbers
+            .FirstOrDefaultAsync(p => p.Id == phoneId && p.UserId == userId);
+
+        if (phoneNumber is null)
+        {
+            return false;
+        }
+
+        _db.UserPhoneNumbers.Remove(phoneNumber);
+        await _db.SaveChangesAsync();
+
+        return true;
+    }
+
+    // ------------------------------------------------------------------
     // Seller application
     // ------------------------------------------------------------------
 
@@ -192,6 +283,30 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(s => s.UserId == userId);
 
         return profile is null ? null : ToDto(profile);
+    }
+
+    public async Task<SellerProfileDto?> UpdateSellerProfileAsync(string userId, SellerApplicationDto dto)
+    {
+        var profile = await _db.SellerProfiles
+            .FirstOrDefaultAsync(s => s.UserId == userId);
+
+        if (profile is null) return null;
+
+        profile.StoreName = dto.StoreName.Trim();
+        profile.Description = dto.Description?.Trim() ?? string.Empty;
+        profile.Logo = dto.Logo?.Trim() ?? string.Empty;
+
+        await _db.SaveChangesAsync();
+        return ToDto(profile);
+    }
+
+    public async Task<bool> ChangePasswordAsync(string userId, ChangePasswordDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return false;
+
+        var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+        return result.Succeeded;
     }
 
     // ------------------------------------------------------------------

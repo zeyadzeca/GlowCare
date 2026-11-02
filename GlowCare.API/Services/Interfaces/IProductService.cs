@@ -33,4 +33,10 @@ public interface IProductService
 
     /// <summary>Permanently deletes a product (Admin only). Fails if order items reference it.</summary>
     Task<bool> AdminDeleteProductAsync(int productId);
+
+    /// <summary>Admin creates a product (can assign to any seller).</summary>
+    Task<ProductResponseDto> AdminCreateProductAsync(ProductCreateDto dto);
+
+    /// <summary>Admin updates any product.</summary>
+    Task<ProductResponseDto?> AdminUpdateProductAsync(int productId, ProductUpdateDto dto);
 }

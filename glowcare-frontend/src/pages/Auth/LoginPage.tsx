@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
@@ -13,7 +12,6 @@ import { Input } from '@/components/common/FormField'
  */
 export function LoginPage() {
   const { login } = useAuth()
-  const { mergeGuestCart } = useCart()
   const { mergeGuestWishlist } = useWishlist()
   const navigate = useNavigate()
 
@@ -28,8 +26,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       const response = await login({ email, password })
-      // Merge guest cart after successful login
-      await mergeGuestCart()
+      // Merge guest wishlist after successful login
       await mergeGuestWishlist()
       // Route each role to its own area: sellers land on the seller dashboard,
       // admins on the admin panel, customers on the storefront.

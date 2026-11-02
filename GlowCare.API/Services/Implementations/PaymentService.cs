@@ -341,17 +341,29 @@ public class PaymentService : IPaymentService
             return null; // not found or not yours
         }
 
-        return new PaymentResponseDto
-        {
-            Id = payment.Id,
-            OrderId = payment.OrderId,
-            Amount = payment.Amount,
-            PaymentMethod = payment.PaymentMethod,
-            PaymentStatus = payment.PaymentStatus,
-            PaymentDate = payment.PaymentDate,
-            TransactionId = payment.TransactionId
-        };
+        return MapToDto(payment);
     }
+
+    public async Task<IList<PaymentResponseDto>> GetAllPaymentsAsync()
+    {
+        var payments = await _db.Payments.AsNoTracking()
+            .Include(p => p.Order)
+            .OrderByDescending(p => p.PaymentDate ?? DateTime.UtcNow)
+            .ToListAsync();
+
+        return payments.Select(MapToDto).ToList();
+    }
+
+    private static PaymentResponseDto MapToDto(Payment payment) => new()
+    {
+        Id = payment.Id,
+        OrderId = payment.OrderId,
+        Amount = payment.Amount,
+        PaymentMethod = payment.PaymentMethod,
+        PaymentStatus = payment.PaymentStatus,
+        PaymentDate = payment.PaymentDate,
+        TransactionId = payment.TransactionId
+    };
 
     // ------------------------------------------------------------------
     // Paymob API calls

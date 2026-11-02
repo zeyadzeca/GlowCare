@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Container } from './Container'
+import { useAuth } from '@/context/AuthContext'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -9,6 +10,9 @@ const CURRENT_YEAR = new Date().getFullYear()
  * fetch needed); every target is a route that exists in App.tsx.
  */
 export function Footer() {
+  const { user, hasRole } = useAuth()
+  const showSellLink = user && hasRole('Customer') && !hasRole('Seller') && !hasRole('Admin')
+
   return (
     <footer className="mt-20 bg-royal text-white">
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
@@ -38,7 +42,7 @@ export function Footer() {
             <li><Link to="/orders" className="hover:text-yellow">Track Your Order</Link></li>
             <li><Link to="/cart" className="hover:text-yellow">Your Cart</Link></li>
             <li><Link to="/wishlist" className="hover:text-yellow">Wishlist</Link></li>
-            <li><Link to="/profile" className="hover:text-yellow">Account</Link></li>
+            <li><Link to="/account" className="hover:text-yellow">Account</Link></li>
           </ul>
         </div>
 
@@ -46,7 +50,7 @@ export function Footer() {
           <h4 className="font-display text-sm uppercase tracking-widest text-yellow">About</h4>
           <ul className="mt-3 space-y-2 text-sm text-white/80">
             <li><Link to="/" className="hover:text-yellow">Our Philosophy</Link></li>
-            <li><Link to="/seller" className="hover:text-yellow">Sell on GlowCare</Link></li>
+            {showSellLink && <li><Link to="/account#seller" className="hover:text-yellow">Sell on GlowCare</Link></li>}
           </ul>
           <p className="mt-4 text-sm text-white/70">
             Cairo, Egypt

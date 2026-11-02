@@ -52,9 +52,17 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<IList<UserManagementDto>> GetUsersAsync()
+    public async Task<IList<UserManagementDto>> GetUsersAsync(string? search = null)
     {
-        var users = await _db.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync();
+        var query = _db.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTerm = search.ToLower();
+            query = query.Where(u => u.FullName.ToLower().Contains(searchTerm) || (u.Email != null && u.Email.ToLower().Contains(searchTerm)));
+        }
+
+        var users = await query.OrderBy(u => u.Email).ToListAsync();
 
         var result = new List<UserManagementDto>(users.Count);
 
@@ -72,6 +80,37 @@ public class AdminService : IAdminService
         }
 
         return result;
+    }
+
+    public async Task<bool> UpdateUserAsync(string userId, UpdateUserDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user is null)
+        {
+            return false;
+        }
+
+        user.FullName = dto.FullName.Trim();
+        user.Email = dto.Email.Trim();
+
+        if (dto.IsLockedOut)
+        {
+            user.LockoutEnd = DateTimeOffset.MaxValue;
+        }
+        else
+        {
+            user.LockoutEnd = null;
+        }
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            throw new AppException(string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
+
+        return true;
     }
 
     public async Task<bool> UpdateUserRoleAsync(string userId, UpdateUserRoleDto dto)

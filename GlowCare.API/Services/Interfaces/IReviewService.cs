@@ -25,4 +25,10 @@ public interface IReviewService
 
     /// <summary>Deletes the user's own review. Returns false if not found or not the author.</summary>
     Task<bool> DeleteReviewAsync(string userId, int reviewId);
+
+    /// <summary>All reviews (Admin only).</summary>
+    Task<IList<ReviewDto>> GetAllReviewsAsync();
+
+    /// <summary>Admin deletes any review.</summary>
+    Task<bool> AdminDeleteReviewAsync(int reviewId);
 }

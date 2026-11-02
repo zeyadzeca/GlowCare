@@ -1,6 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
+export interface NavItem {
+  to: string
+  label: string
+  end?: boolean
+}
+
 /**
  * Shared seller/admin workspace: identity colors, sidebar nav, content panel.
  * The storefront Navbar/Footer still wrap these pages from App.tsx.
@@ -13,7 +19,7 @@ export function DashboardShell({
 }: {
   title: string
   subtitle?: string
-  nav: { to: string; label: string; end?: boolean }[]
+  nav?: NavItem[]
   children: ReactNode
 }) {
   return (
@@ -25,25 +31,27 @@ export function DashboardShell({
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[14rem_1fr]">
-        <nav className="h-fit card p-3" aria-label="Dashboard">
-          <ul className="space-y-1">
-            {nav.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `block rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-                      isActive ? 'bg-yellow text-royal' : 'text-navy/70 hover:bg-off-white hover:text-royal'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        {nav && (
+          <nav className="h-fit card p-3" aria-label="Dashboard">
+            <ul className="space-y-1">
+              {nav.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `block rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                        isActive ? 'bg-yellow text-royal' : 'text-navy/70 hover:bg-off-white hover:text-royal'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         <div>{children}</div>
       </div>
     </div>

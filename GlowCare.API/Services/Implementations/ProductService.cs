@@ -247,7 +247,7 @@ public class ProductService : IProductService
         product.CategoryId = dto.CategoryId;
         product.Volume = dto.Volume.Trim();
         product.SPF = dto.SPF;
-        product.IsActive = dto.IsActive;
+        product.IsActive = dto.IsActive ?? true;
 
         // Replace images and junction rows with the submitted lists.
         product.Images.Clear();
@@ -307,8 +307,91 @@ public class ProductService : IProductService
         }
         catch (DbUpdateException)
         {
-            return false; // still referenced (order items)
+            return false;
         }
+    }
+
+    public async Task<ProductResponseDto> AdminCreateProductAsync(ProductCreateDto dto)
+    {
+        await EnsureCatalogReferencesAsync(dto.BrandId, dto.CategoryId, dto.SkinTypeIds, dto.IngredientIds);
+
+        var product = new Product
+        {
+            Name = dto.Name.Trim(),
+            Description = dto.Description.Trim(),
+            Price = dto.Price,
+            StockQuantity = dto.StockQuantity,
+            BrandId = dto.BrandId,
+            CategoryId = dto.CategoryId,
+            SellerId = dto.SellerId ?? throw new AppException("SellerId is required for admin product creation.", 400),
+            Volume = dto.Volume?.Trim() ?? string.Empty,
+            SPF = dto.SPF,
+            IsActive = dto.IsActive ?? true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Products.Add(product);
+        await SaveChangesAsync();
+
+        foreach (var url in dto.ImageUrls.Where(u => !string.IsNullOrWhiteSpace(u)))
+        {
+            _db.ProductImages.Add(new ProductImage { ProductId = product.Id, ImageUrl = url.Trim() });
+        }
+        foreach (var skinTypeId in dto.SkinTypeIds.Distinct())
+        {
+            _db.ProductSkinTypes.Add(new ProductSkinType { ProductId = product.Id, SkinTypeId = skinTypeId });
+        }
+        foreach (var ingredientId in dto.IngredientIds.Distinct())
+        {
+            _db.ProductIngredients.Add(new ProductIngredient { ProductId = product.Id, IngredientId = ingredientId });
+        }
+
+        await SaveChangesAsync();
+        return await MapToDetailAsync(product);
+    }
+
+    public async Task<ProductResponseDto?> AdminUpdateProductAsync(int productId, ProductUpdateDto dto)
+    {
+        await EnsureCatalogReferencesAsync(dto.BrandId, dto.CategoryId, dto.SkinTypeIds, dto.IngredientIds);
+
+        var product = await _db.Products
+            .Include(p => p.Images)
+            .Include(p => p.ProductSkinTypes)
+            .Include(p => p.ProductIngredients)
+            .FirstOrDefaultAsync(p => p.Id == productId);
+
+        if (product is null) return null;
+
+        product.Name = dto.Name.Trim();
+        product.Description = dto.Description.Trim();
+        product.Price = dto.Price;
+        product.StockQuantity = dto.StockQuantity;
+        product.BrandId = dto.BrandId;
+        product.CategoryId = dto.CategoryId;
+        if (dto.SellerId != null) product.SellerId = dto.SellerId;
+        product.Volume = dto.Volume?.Trim() ?? string.Empty;
+        product.SPF = dto.SPF;
+        if (dto.IsActive.HasValue) product.IsActive = dto.IsActive.Value;
+
+        _db.ProductImages.RemoveRange(product.Images);
+        _db.ProductSkinTypes.RemoveRange(product.ProductSkinTypes);
+        _db.ProductIngredients.RemoveRange(product.ProductIngredients);
+
+        foreach (var url in dto.ImageUrls.Where(u => !string.IsNullOrWhiteSpace(u)))
+        {
+            _db.ProductImages.Add(new ProductImage { ProductId = product.Id, ImageUrl = url.Trim() });
+        }
+        foreach (var skinTypeId in dto.SkinTypeIds.Distinct())
+        {
+            _db.ProductSkinTypes.Add(new ProductSkinType { ProductId = product.Id, SkinTypeId = skinTypeId });
+        }
+        foreach (var ingredientId in dto.IngredientIds.Distinct())
+        {
+            _db.ProductIngredients.Add(new ProductIngredient { ProductId = product.Id, IngredientId = ingredientId });
+        }
+
+        await SaveChangesAsync();
+        return await MapToDetailAsync(product);
     }
 
     // ------------------------------------------------------------------

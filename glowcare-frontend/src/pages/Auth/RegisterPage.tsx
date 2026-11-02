@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { useCart } from '@/context/CartContext'
 import { useWishlist } from '@/context/WishlistContext'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
@@ -16,7 +15,6 @@ import { Input } from '@/components/common/FormField'
  */
 export function RegisterPage() {
   const { register } = useAuth()
-  const { mergeGuestCart } = useCart()
   const { mergeGuestWishlist } = useWishlist()
   const navigate = useNavigate()
 
@@ -45,8 +43,7 @@ export function RegisterPage() {
     setSubmitting(true)
     try {
       await register(form)
-      // Merge guest cart after successful registration
-      await mergeGuestCart()
+      // Merge guest wishlist after successful registration
       await mergeGuestWishlist()
       navigate('/', { replace: true })
     } catch (err) {

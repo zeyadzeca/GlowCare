@@ -16,15 +16,19 @@ import { ProfilePage } from '@/pages/Account/ProfilePage'
 import { AboutPage } from '@/pages/About/AboutPage'
 import { SellerDashboardPage } from '@/pages/Seller/SellerDashboardPage'
 import { SellerProductsPage } from '@/pages/Seller/SellerProductsPage'
-import { SellerInventoryPage } from '@/pages/Seller/SellerInventoryPage'
 import { SellerOrdersPage } from '@/pages/Seller/SellerOrdersPage'
 import { AdminDashboardPage } from '@/pages/Admin/AdminDashboardPage'
 import { AdminUsersPage } from '@/pages/Admin/AdminUsersPage'
 import { AdminSellersPage } from '@/pages/Admin/AdminSellersPage'
+import { AdminCategoriesPage } from '@/pages/Admin/AdminCategoriesPage'
+import { AdminBrandsPage } from '@/pages/Admin/AdminBrandsPage'
+import { AdminSkinTypesPage } from '@/pages/Admin/AdminSkinTypesPage'
 import { AdminProductsPage } from '@/pages/Admin/AdminProductsPage'
 import { AdminOrdersPage } from '@/pages/Admin/AdminOrdersPage'
 import { AdminPromosPage } from '@/pages/Admin/AdminPromosPage'
 import { AdminBannersPage } from '@/pages/Admin/AdminBannersPage'
+import { AdminPaymentsPage } from '@/pages/Admin/AdminPaymentsPage'
+import { AdminReviewsPage } from '@/pages/Admin/AdminReviewsPage'
 import { PaymentReturnPage } from '@/pages/PaymentReturnPage'
 import { NotFoundPage } from '@/pages/NotFound/NotFoundPage'
 
@@ -65,15 +69,8 @@ export default function App() {
             }
           />
 
-          {/* Protected customer routes */}
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <CartPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Cart - accessible to guests, checkout requires auth */}
+          <Route path="/cart" element={<CartPage />} />
           <Route
             path="/checkout"
             element={
@@ -134,14 +131,6 @@ export default function App() {
             }
           />
           <Route
-            path="/seller/inventory"
-            element={
-              <RoleRoute roles={['Seller']}>
-                <SellerInventoryPage />
-              </RoleRoute>
-            }
-          />
-          <Route
             path="/seller/orders"
             element={
               <RoleRoute roles={['Seller']}>
@@ -176,6 +165,30 @@ export default function App() {
             }
           />
           <Route
+            path="/admin/categories"
+            element={
+              <RoleRoute roles={['Admin']}>
+                <AdminCategoriesPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/brands"
+            element={
+              <RoleRoute roles={['Admin']}>
+                <AdminBrandsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/skintypes"
+            element={
+              <RoleRoute roles={['Admin']}>
+                <AdminSkinTypesPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/admin/products"
             element={
               <RoleRoute roles={['Admin']}>
@@ -204,6 +217,22 @@ export default function App() {
             element={
               <RoleRoute roles={['Admin']}>
                 <AdminBannersPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/payments"
+            element={
+              <RoleRoute roles={['Admin']}>
+                <AdminPaymentsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/reviews"
+            element={
+              <RoleRoute roles={['Admin']}>
+                <AdminReviewsPage />
               </RoleRoute>
             }
           />

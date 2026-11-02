@@ -117,14 +117,19 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IBannerService, BannerService>();
 
 // ---------------------------------------------------------------------------
-// CORS - allow only the React frontend origin.
+// CORS - allow the React frontend origin (localhost and ngrok).
 // ---------------------------------------------------------------------------
 const string CorsPolicy = "Frontend";
 builder.Services.AddCors(options =>
     options.AddPolicy(CorsPolicy, policy => policy
-        .WithOrigins("http://localhost:5173")
+        .WithOrigins(
+            "http://localhost:5173",
+            "https://dentist-residue-appliance.ngrok-free.dev",
+            "https://outboard-glutinous-clinic.ngrok-free.dev"
+        )
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        .AllowCredentials()));
 
 // ---------------------------------------------------------------------------
 // Swagger / OpenAPI with JWT Bearer support so endpoints can be tested in Phase 9.

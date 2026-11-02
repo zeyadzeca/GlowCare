@@ -387,6 +387,11 @@ namespace GlowCare.API.Data.Migrations
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("int");
 
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int?>("PromoCodeId")
                         .HasColumnType("int");
 
@@ -813,6 +818,34 @@ namespace GlowCare.API.Data.Migrations
                     b.ToTable("SellerProfiles");
                 });
 
+            modelBuilder.Entity("GlowCare.API.Models.User.UserPhoneNumber", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserPhoneNumbers");
+                });
+
             modelBuilder.Entity("GlowCare.API.Models.Wishlist.Wishlist", b =>
                 {
                     b.Property<int>("Id")
@@ -1224,6 +1257,17 @@ namespace GlowCare.API.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("GlowCare.API.Models.User.UserPhoneNumber", b =>
+                {
+                    b.HasOne("GlowCare.API.Models.Identity.ApplicationUser", "User")
+                        .WithMany("PhoneNumbers")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("GlowCare.API.Models.Wishlist.Wishlist", b =>
                 {
                     b.HasOne("GlowCare.API.Models.Identity.ApplicationUser", "User")
@@ -1337,6 +1381,8 @@ namespace GlowCare.API.Data.Migrations
             modelBuilder.Entity("GlowCare.API.Models.Identity.ApplicationUser", b =>
                 {
                     b.Navigation("Addresses");
+
+                    b.Navigation("PhoneNumbers");
 
                     b.Navigation("SellerProfile");
                 });

@@ -66,4 +66,14 @@ public class PaymentsController : ControllerBase
             ? NotFound(new { statusCode = 404, message = $"Payment {id} was not found." })
             : Ok(payment);
     }
+
+    // ------------------------------------------------------------------
+    // Admin
+    // ------------------------------------------------------------------
+
+    /// <summary>All payments (Admin only).</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin/all")]
+    public async Task<ActionResult<IList<PaymentResponseDto>>> GetAllPayments()
+        => Ok(await _payments.GetAllPaymentsAsync());
 }

@@ -43,6 +43,9 @@ export function CheckoutPage() {
   const [addressId, setAddressId] = useState<number | ''>('')
   const [newAddress, setNewAddress] = useState<AddressRequest>(emptyAddress)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [phoneNumbers, setPhoneNumbers] = useState<{ id: number; phoneNumber: string; createdAt: string }[]>([])
+  const [selectedPhoneId, setSelectedPhoneId] = useState<number | ''>('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [promoCode, setPromoCode] = useState('')
   const [promoNotice, setPromoNotice] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CashOnDelivery)
@@ -66,10 +69,19 @@ export function CheckoutPage() {
     })
   }, [])
 
+  const loadPhoneNumbers = useCallback(async () => {
+    const phones = await userApi.getPhoneNumbers()
+    setPhoneNumbers(phones)
+    setSelectedPhoneId((current) => {
+      if (current !== '' && phones.some((p) => p.id === current)) return current
+      return phones[0]?.id ?? ''
+    })
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    loadAddresses()
+    Promise.all([loadAddresses(), loadPhoneNumbers()])
       .catch((err) => {
         if (!cancelled) setError(getErrorMessage(err))
       })
@@ -79,7 +91,7 @@ export function CheckoutPage() {
     return () => {
       cancelled = true
     }
-  }, [loadAddresses])
+  }, [loadAddresses, loadPhoneNumbers])
 
   const preview = useCallback(async () => {
     if (addressId === '') {
@@ -190,12 +202,24 @@ export function CheckoutPage() {
       selectedId = saved.id
     }
 
+    let selectedPhone = phoneNumber
+    if (selectedPhoneId !== '') {
+      const phone = phoneNumbers.find(p => p.id === selectedPhoneId)
+      if (phone) selectedPhone = phone.phoneNumber
+    }
+
+    if (!selectedPhone || selectedPhone.trim().length < 10) {
+      setError('Please enter a valid mobile phone number.')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     const payload = {
       addressId: selectedId,
       paymentMethod,
       promoCode: promoCode.trim() || null,
+      phoneNumber: selectedPhone.trim(),
     }
     try {
       if (paymentMethod === PaymentMethod.CreditCard) {
@@ -223,7 +247,7 @@ export function CheckoutPage() {
           title="Sign in to checkout"
           message="Please create an account or sign in to complete your purchase."
           actionLabel="Sign in"
-          actionTo="/login"
+          actionTo="/login?redirect=/checkout"
         />
       </div>
     )
@@ -334,6 +358,33 @@ export function CheckoutPage() {
                     Cancel
                   </Button>
                 )}
+              </div>
+            </div>
+
+            <div className="mt-6 border-t border-navy/10 pt-4">
+              <h2 className="font-display text-lg text-royal">Mobile number</h2>
+              {phoneNumbers.length > 0 ? (
+                <ul className="mt-4 space-y-2">
+                  {phoneNumbers.map((phone) => (
+                    <li key={phone.id}>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-navy/10 p-3 has-[:checked]:border-royal has-[:checked]:bg-royal/5">
+                        <input
+                          type="radio"
+                          name="phone"
+                          checked={selectedPhoneId === phone.id}
+                          onChange={() => { setSelectedPhoneId(phone.id); setPhoneNumber(phone.phoneNumber) }}
+                          className="mt-1"
+                        />
+                        <span className="flex-1 text-sm font-semibold text-navy">{phone.phoneNumber}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-navy/70">No saved phone numbers.</p>
+              )}
+              <div className="mt-4">
+                <Input label="Or enter new phone number" value={selectedPhoneId === '' ? phoneNumber : ''} onChange={(e) => { setSelectedPhoneId(''); setPhoneNumber(e.target.value) }} placeholder="01xxxxxxxxx" />
               </div>
             </div>
           </section>

@@ -36,6 +36,10 @@ public class ProductCreateDto
     [Range(0, 100)]
     public int? SPF { get; set; }
 
+    public bool? IsActive { get; set; }
+
+    public string? SellerId { get; set; }
+
     [MaxLength(10)]
     public IList<string> ImageUrls { get; set; } = new List<string>();
 

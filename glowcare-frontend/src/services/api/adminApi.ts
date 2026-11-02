@@ -26,9 +26,13 @@ export async function getAdminDashboard(): Promise<AdminDashboardStats> {
 
 /* ----------------------------- Users ------------------------------ */
 
-export async function getAdminUsers(): Promise<UserManagement[]> {
-  const { data } = await api.get<UserManagement[]>('/admin/users')
+export async function getAdminUsers(search?: string): Promise<UserManagement[]> {
+  const { data } = await api.get<UserManagement[]>('/admin/users', { params: search ? { search } : {} })
   return data
+}
+
+export async function updateAdminUser(id: number, payload: { fullName: string; email: string; isLockedOut: boolean }): Promise<void> {
+  await api.put(`/admin/users/${id}`, payload)
 }
 
 /** PUT /api/admin/users/{id}/role - grants or removes a role. */
@@ -78,9 +82,42 @@ export async function updateOrderStatus(
 
 /* --------------------------- Products ----------------------------- */
 
+/** POST /api/products/admin - Admin creates product (can assign any seller). */
+export async function adminCreateProduct(payload: any): Promise<ProductDetails> {
+  const { data } = await api.post<ProductDetails>('/products/admin', payload)
+  return data
+}
+
+/** PUT /api/products/admin/{id} - Admin updates any product. */
+export async function adminUpdateProduct(id: number, payload: any): Promise<ProductDetails> {
+  const { data } = await api.put<ProductDetails>(`/products/admin/${id}`, payload)
+  return data
+}
+
 /** DELETE /api/products/{id}/permanent - Admin only, refused if referenced. */
 export async function adminDeleteProduct(id: number): Promise<void> {
   await api.delete(`/products/${id}/permanent`)
+}
+
+/* ----------------------------- Payments ----------------------------- */
+
+/** GET /api/payments/admin/all - All payments (Admin only). */
+export async function getAllPayments(): Promise<any[]> {
+  const { data } = await api.get<any[]>('/payments/admin/all')
+  return data
+}
+
+/* ------------------------------ Reviews ------------------------------ */
+
+/** GET /api/reviews/admin/all - All reviews (Admin only). */
+export async function getAllReviews(): Promise<any[]> {
+  const { data } = await api.get<any[]>('/reviews/admin/all')
+  return data
+}
+
+/** DELETE /api/reviews/admin/{id} - Admin deletes any review. */
+export async function adminDeleteReview(id: number): Promise<void> {
+  await api.delete(`/reviews/admin/${id}`)
 }
 
 /* ------------------ Taxonomy CRUD (Admin only) --------------------- */

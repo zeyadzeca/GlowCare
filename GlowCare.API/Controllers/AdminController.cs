@@ -27,8 +27,20 @@ public class AdminController : ControllerBase
 
     /// <summary>All user accounts with their roles and lockout state.</summary>
     [HttpGet("users")]
-    public async Task<ActionResult<IList<UserManagementDto>>> GetUsers()
-        => Ok(await _admin.GetUsersAsync());
+    public async Task<ActionResult<IList<UserManagementDto>>> GetUsers([FromQuery] string? search = null)
+        => Ok(await _admin.GetUsersAsync(search));
+
+    /// <summary>Update user name, email, or lockout status.</summary>
+    [HttpPut("users/{userId}")]
+    public async Task<IActionResult> UpdateUser(string userId, UpdateUserDto dto)
+    {
+        if (!await _admin.UpdateUserAsync(userId, dto))
+        {
+            return NotFound(new { statusCode = 404, message = $"User '{userId}' was not found." });
+        }
+
+        return Ok(new { message = "User updated." });
+    }
 
     /// <summary>Grants or removes a role (Admin, Seller, Customer).</summary>
     [HttpPut("users/{userId}/role")]

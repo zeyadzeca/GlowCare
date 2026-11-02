@@ -140,6 +140,26 @@ public class ReviewService : IReviewService
         return true;
     }
 
+    public async Task<IList<ReviewDto>> GetAllReviewsAsync()
+    {
+        var reviews = await _db.Reviews.AsNoTracking()
+            .Include(r => r.User)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return reviews.Select(r => Map(r, r.User.FullName)).ToList();
+    }
+
+    public async Task<bool> AdminDeleteReviewAsync(int reviewId)
+    {
+        var review = await _db.Reviews.FindAsync(reviewId);
+        if (review is null) return false;
+
+        _db.Reviews.Remove(review);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     private static ReviewDto Map(Review review, string fullName) => new()
     {
         Id = review.Id,

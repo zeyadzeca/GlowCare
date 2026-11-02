@@ -37,7 +37,6 @@ interface CartContextValue {
   removeItem: (cartItemId: number) => Promise<void>
   clear: () => Promise<void>
   refresh: () => Promise<void>
-  mergeGuestCart: () => Promise<void>
 }
 
 const EMPTY_CART: Cart = { id: 0, items: [], subtotal: 0, totalItems: 0 }
@@ -73,6 +72,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth()
   const [cart, setCart] = useState<Cart | null>(null)
   const [loading, setLoading] = useState(false)
+  const [hasMerged, setHasMerged] = useState(false)
 
   const isCustomer = user?.roles.includes('Customer') ?? false
   const isGuest = !isAuthenticated
@@ -111,6 +111,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     }
   }, [isAuthenticated, isCustomer])
+
+  // Merge guest cart when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && isCustomer && !hasMerged) {
+      const guestItems = getGuestCart()
+      if (guestItems.length > 0) {
+        const doMerge = async () => {
+          try {
+            const backendCart = await cartApi.getCart()
+            for (const guestItem of guestItems) {
+              const existing = backendCart.items.find((item) => item.productId === guestItem.productId)
+              if (existing) {
+                await cartApi.updateCartItem(existing.id, existing.quantity + guestItem.quantity)
+              } else {
+                await cartApi.addToCart({ productId: guestItem.productId, quantity: guestItem.quantity })
+              }
+            }
+            clearGuestCart()
+            await refresh()
+          } catch (error) {
+            console.error('Failed to merge guest cart:', error)
+          }
+          setHasMerged(true)
+        }
+        void doMerge()
+      } else {
+        setHasMerged(true)
+      }
+    } else if (!isAuthenticated) {
+      setHasMerged(false)
+    }
+  }, [isAuthenticated, isCustomer, hasMerged, refresh])
 
   useEffect(() => {
     void refresh()
@@ -178,38 +210,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart({ ...EMPTY_CART })
   }, [isGuest])
 
-  const mergeGuestCart = useCallback(async () => {
-    if (!isAuthenticated || !isCustomer) return
-
-    const guestItems = getGuestCart()
-    if (guestItems.length === 0) {
-      clearGuestCart()
-      return
-    }
-
-    try {
-      // Get current backend cart
-      const backendCart = await cartApi.getCart()
-
-      // Merge guest items with backend cart
-      for (const guestItem of guestItems) {
-        const existing = backendCart.items.find((item) => item.productId === guestItem.productId)
-        if (existing) {
-          await cartApi.updateCartItem(existing.id, existing.quantity + guestItem.quantity)
-        } else {
-          await cartApi.addToCart({ productId: guestItem.productId, quantity: guestItem.quantity })
-        }
-      }
-
-      // Clear guest cart after successful merge
-      clearGuestCart()
-      await refresh()
-    } catch (error) {
-      console.error('Failed to merge guest cart:', error)
-      // Keep guest cart if merge fails
-    }
-  }, [isAuthenticated, isCustomer, refresh])
-
   const itemCount = useMemo(
     () => cart?.items.reduce((total, item) => total + item.quantity, 0) ?? 0,
     [cart],
@@ -226,9 +226,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       clear,
       refresh,
-      mergeGuestCart,
     }),
-    [cart, loading, itemCount, isGuest, addItem, updateItem, removeItem, clear, refresh, mergeGuestCart],
+    [cart, loading, itemCount, isGuest, addItem, updateItem, removeItem, clear, refresh],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

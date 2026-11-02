@@ -15,6 +15,7 @@ public class ApplicationUser : IdentityUser
 
     // Navigation properties
     public ICollection<Address> Addresses { get; set; } = new List<Address>();
+    public ICollection<UserPhoneNumber> PhoneNumbers { get; set; } = new List<UserPhoneNumber>();
 
     public SellerProfile? SellerProfile { get; set; }
 }

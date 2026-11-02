@@ -43,6 +43,25 @@ export async function deleteAddress(id: number): Promise<void> {
   await api.delete(`/users/me/addresses/${id}`)
 }
 
+export async function getPhoneNumbers(): Promise<{ id: number; phoneNumber: string; createdAt: string }[]> {
+  const { data } = await api.get('/users/me/phone-numbers')
+  return data
+}
+
+export async function addPhoneNumber(payload: { phoneNumber: string }): Promise<{ id: number; phoneNumber: string; createdAt: string }> {
+  const { data } = await api.post('/users/me/phone-numbers', payload)
+  return data
+}
+
+export async function updatePhoneNumber(id: number, payload: { phoneNumber: string }): Promise<{ id: number; phoneNumber: string; createdAt: string }> {
+  const { data } = await api.put(`/users/me/phone-numbers/${id}`, payload)
+  return data
+}
+
+export async function deletePhoneNumber(id: number): Promise<void> {
+  await api.delete(`/users/me/phone-numbers/${id}`)
+}
+
 /** POST /users/me/seller-application - creates a Pending SellerProfile. */
 export async function applyForSeller(payload: SellerApplicationRequest): Promise<SellerProfile> {
   const { data } = await api.post<SellerProfile>('/users/me/seller-application', payload)
@@ -66,4 +85,15 @@ export async function getSellerProfile(): Promise<SellerProfile | null> {
     }
     throw error
   }
+}
+
+/** PUT /users/me/seller-profile - update store name, description, logo. */
+export async function updateSellerProfile(payload: { storeName: string; description: string; logo: string }): Promise<SellerProfile> {
+  const { data } = await api.put<SellerProfile>('/users/me/seller-profile', payload)
+  return data
+}
+
+/** POST /users/me/change-password */
+export async function changePassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
+  await api.post('/users/me/change-password', payload)
 }

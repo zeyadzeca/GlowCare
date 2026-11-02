@@ -44,4 +44,26 @@ public class ReviewsController : ControllerBase
 
         return Ok(new { message = "Review deleted." });
     }
+
+    // ------------------------------------------------------------------
+    // Admin
+    // ------------------------------------------------------------------
+
+    /// <summary>All reviews (Admin only).</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin/all")]
+    public async Task<ActionResult<IList<ReviewDto>>> GetAllReviews()
+        => Ok(await _reviews.GetAllReviewsAsync());
+
+    /// <summary>Admin deletes any review.</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("admin/{id:int}")]
+    public async Task<IActionResult> AdminDeleteReview(int id)
+    {
+        if (!await _reviews.AdminDeleteReviewAsync(id))
+        {
+            return NotFound(new { statusCode = 404, message = $"Review {id} was not found." });
+        }
+        return Ok(new { message = "Review deleted." });
+    }
 }

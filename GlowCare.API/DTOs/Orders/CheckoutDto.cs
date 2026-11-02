@@ -19,4 +19,10 @@ public class CheckoutDto
     /// <summary>Optional promo code entered by the customer (validated server-side).</summary>
     [MaxLength(50)]
     public string? PromoCode { get; set; }
+
+    /// <summary>Mobile phone number for delivery contact.</summary>
+    [Required]
+    [Phone]
+    [MaxLength(20)]
+    public string PhoneNumber { get; set; } = string.Empty;
 }
