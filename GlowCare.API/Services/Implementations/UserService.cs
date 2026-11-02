@@ -155,70 +155,71 @@ public class UserService : IUserService
     {
         return await _db.UserPhoneNumbers
             .Where(p => p.UserId == userId)
-            .OrderBy(p => p.Id)
-            .Select(p => new UserPhoneNumberDto
-            {
-                Id = p.Id,
-                PhoneNumber = p.PhoneNumber,
-                CreatedAt = p.CreatedAt
-            })
+            .OrderBy(p => p.IsDefault ? 0 : 1)
+            .ThenBy(p => p.Id)
+            .Select(p => ToDto(p))
             .ToListAsync();
     }
 
     public async Task<UserPhoneNumberDto> AddPhoneNumberAsync(string userId, CreatePhoneNumberDto dto)
     {
-        var normalizedPhone = dto.PhoneNumber.Trim();
+        var normalizedPhone = NormalizePhoneNumber(dto.PhoneNumber);
 
-        var existing = await _db.UserPhoneNumbers
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.PhoneNumber == normalizedPhone);
+        var existing = await FindPhoneNumberAsync(userId, normalizedPhone);
 
         if (existing is not null)
         {
-            return new UserPhoneNumberDto
-            {
-                Id = existing.Id,
-                PhoneNumber = existing.PhoneNumber,
-                CreatedAt = existing.CreatedAt
-            };
+            // Re-saving the same number is treated as "already saved".
+            return ToDto(existing);
+        }
+
+        // A customer can only have ONE primary phone number. Adding another one
+        // is rejected so the client can switch to editing the existing number.
+        if (await _db.UserPhoneNumbers.AnyAsync(p => p.UserId == userId))
+        {
+            throw new AppException("You already have a phone number saved. Edit it instead of adding another one.", 409);
         }
 
         var phoneNumber = new UserPhoneNumber
         {
             UserId = userId,
             PhoneNumber = normalizedPhone,
+            IsDefault = true, // the single phone number is always the primary one
             CreatedAt = DateTime.UtcNow
         };
 
         _db.UserPhoneNumbers.Add(phoneNumber);
         await _db.SaveChangesAsync();
 
-        return new UserPhoneNumberDto
-        {
-            Id = phoneNumber.Id,
-            PhoneNumber = phoneNumber.PhoneNumber,
-            CreatedAt = phoneNumber.CreatedAt
-        };
+        return ToDto(phoneNumber);
     }
 
     public async Task<UserPhoneNumberDto?> UpdatePhoneNumberAsync(string userId, int phoneId, UpdatePhoneNumberDto dto)
     {
+        var normalizedPhone = NormalizePhoneNumber(dto.PhoneNumber);
+
         var phoneNumber = await _db.UserPhoneNumbers
             .FirstOrDefaultAsync(p => p.Id == phoneId && p.UserId == userId);
 
         if (phoneNumber is null)
         {
-            return null;
+            return null; // not found or not owned by this user
         }
 
-        phoneNumber.PhoneNumber = dto.PhoneNumber.Trim();
+        // An update may never turn this row into a duplicate of ANOTHER saved number.
+        var duplicate = await FindPhoneNumberAsync(userId, normalizedPhone);
+        if (duplicate is not null && duplicate.Id != phoneId)
+        {
+            throw new AppException("You already have this phone number saved.", 409);
+        }
+
+        phoneNumber.PhoneNumber = normalizedPhone;
+        // The single saved number is always the primary one.
+        phoneNumber.IsDefault = true;
+
         await _db.SaveChangesAsync();
 
-        return new UserPhoneNumberDto
-        {
-            Id = phoneNumber.Id,
-            PhoneNumber = phoneNumber.PhoneNumber,
-            CreatedAt = phoneNumber.CreatedAt
-        };
+        return ToDto(phoneNumber);
     }
 
     public async Task<bool> DeletePhoneNumberAsync(string userId, int phoneId)
@@ -228,7 +229,21 @@ public class UserService : IUserService
 
         if (phoneNumber is null)
         {
-            return false;
+            return false; // not found or not owned by this user
+        }
+
+        // If deleting the default, the oldest remaining number becomes the default.
+        if (phoneNumber.IsDefault)
+        {
+            var nextDefault = await _db.UserPhoneNumbers
+                .Where(p => p.UserId == userId && p.Id != phoneId)
+                .OrderBy(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            if (nextDefault is not null)
+            {
+                nextDefault.IsDefault = true;
+            }
         }
 
         _db.UserPhoneNumbers.Remove(phoneNumber);
@@ -236,6 +251,48 @@ public class UserService : IUserService
 
         return true;
     }
+
+    /// <summary>
+    /// Trims and collapses inner whitespace, then rejects empty values the same
+    /// way NormalizeAddress does (required, max 20 characters).
+    /// </summary>
+    private static string NormalizePhoneNumber(string? phoneNumber)
+    {
+        var value = string.Join(
+            " ",
+            (phoneNumber ?? string.Empty)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new AppException("Phone number is required.", 400);
+        }
+
+        if (value.Length > 20)
+        {
+            throw new AppException("Phone number must be 20 characters or fewer.", 400);
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// Finds a saved number of this user whose digits match the given value, so
+    /// "01001112233" and "0100 111 2233" count as the same number. Only the
+    /// caller's own rows are ever scanned.
+    /// </summary>
+    private async Task<UserPhoneNumber?> FindPhoneNumberAsync(string userId, string phoneNumber)
+    {
+        var key = PhoneSortKey(phoneNumber);
+        var saved = await _db.UserPhoneNumbers
+            .Where(p => p.UserId == userId)
+            .ToListAsync();
+
+        return saved.FirstOrDefault(p => PhoneSortKey(p.PhoneNumber) == key);
+    }
+
+    private static string PhoneSortKey(string phoneNumber)
+        => new string(phoneNumber.Where(char.IsDigit).ToArray());
 
     // ------------------------------------------------------------------
     // Seller application
@@ -334,6 +391,14 @@ public class UserService : IUserService
         City = a.City,
         Street = a.Street,
         BuildingNumber = a.BuildingNumber
+    };
+
+    private static UserPhoneNumberDto ToDto(UserPhoneNumber p) => new()
+    {
+        Id = p.Id,
+        PhoneNumber = p.PhoneNumber,
+        IsDefault = p.IsDefault,
+        CreatedAt = p.CreatedAt
     };
 
     private static SellerProfileDto ToDto(SellerProfile s) => new()

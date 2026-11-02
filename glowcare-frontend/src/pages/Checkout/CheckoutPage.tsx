@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { orderApi, promoBannerApi, userApi } from '@/services/api'
 import { useCart } from '@/context/CartContext'
 import { PaymentMethod } from '@/types/enums'
-import type { Address, AddressRequest, OrderSummary } from '@/types/api.types'
+import type { Address, AddressRequest, OrderSummary, UserPhoneNumber } from '@/types/api.types'
 import { formatPrice } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
@@ -35,6 +35,11 @@ function sameAddress(a: AddressRequest, b: AddressRequest): boolean {
   )
 }
 
+function isValidPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 15
+}
+
 export function CheckoutPage() {
   const { cart, loading: cartLoading, refresh, isGuest } = useCart()
   const navigate = useNavigate()
@@ -43,9 +48,9 @@ export function CheckoutPage() {
   const [addressId, setAddressId] = useState<number | ''>('')
   const [newAddress, setNewAddress] = useState<AddressRequest>(emptyAddress)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [phoneNumbers, setPhoneNumbers] = useState<{ id: number; phoneNumber: string; createdAt: string }[]>([])
-  const [selectedPhoneId, setSelectedPhoneId] = useState<number | ''>('')
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumbers, setPhoneNumbers] = useState<UserPhoneNumber[]>([])
+  const [phoneForm, setPhoneForm] = useState('')
+  const [editingPhone, setEditingPhone] = useState(false)
   const [promoCode, setPromoCode] = useState('')
   const [promoNotice, setPromoNotice] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CashOnDelivery)
@@ -53,6 +58,7 @@ export function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [addressBusy, setAddressBusy] = useState(false)
+  const [phoneBusy, setPhoneBusy] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const selectAddress = useCallback((id: number) => {
@@ -60,8 +66,7 @@ export function CheckoutPage() {
     setError(null)
   }, [])
 
-  const loadAddresses = useCallback(async () => {
-    const list = await userApi.getAddresses()
+  const loadAddresses = useCallback(async () => {    const list = await userApi.getAddresses()
     setAddresses(list)
     setAddressId((current) => {
       if (current !== '' && list.some((address) => address.id === current)) return current
@@ -70,12 +75,7 @@ export function CheckoutPage() {
   }, [])
 
   const loadPhoneNumbers = useCallback(async () => {
-    const phones = await userApi.getPhoneNumbers()
-    setPhoneNumbers(phones)
-    setSelectedPhoneId((current) => {
-      if (current !== '' && phones.some((p) => p.id === current)) return current
-      return phones[0]?.id ?? ''
-    })
+    setPhoneNumbers(await userApi.getPhoneNumbers())
   }, [])
 
   useEffect(() => {
@@ -93,8 +93,14 @@ export function CheckoutPage() {
     }
   }, [loadAddresses, loadPhoneNumbers])
 
-  const preview = useCallback(async () => {
-    if (addressId === '') {
+  // The phone that would be used for the order right now: the customer's
+  // single saved primary number, or the draft being entered in the form.
+  const effectivePhone = phoneNumbers[0]?.phoneNumber ?? phoneForm.trim()
+
+  const preview = useCallback(async (phone: string) => {
+    if (addressId === '' || phone === '') {
+      // The backend needs an address AND a contact phone to build a summary,
+      // exactly like it needs the address for the shipping snapshot.
       setSummary(null)
       return
     }
@@ -103,6 +109,7 @@ export function CheckoutPage() {
         addressId,
         paymentMethod,
         promoCode: promoCode.trim() || null,
+        phoneNumber: phone,
       })
       setSummary(result)
       setError(null)
@@ -113,8 +120,8 @@ export function CheckoutPage() {
   }, [addressId, paymentMethod, promoCode])
 
   useEffect(() => {
-    void preview()
-  }, [preview])
+    void preview(effectivePhone)
+  }, [preview, effectivePhone])
 
   function applySavedAddress(saved: Address) {
     setAddresses((list) => {
@@ -183,9 +190,40 @@ export function CheckoutPage() {
         subtotal: cart.subtotal,
       })
       setPromoNotice(result.message)
-      await preview()
+      await preview(effectivePhone)
     } catch (err) {
       setPromoNotice(getErrorMessage(err, 'Could not validate that code.'))
+    }
+  }
+
+  /**
+   * Saves the customer's single primary phone number (add or edit) without
+   * placing an order - the same "Save address" behaviour above. The number is
+   * always stored as the primary one.
+   */
+  async function persistPhoneDraft(): Promise<UserPhoneNumber | null> {
+    const value = phoneForm.trim()
+    if (!isValidPhone(value)) {
+      setError('Enter a valid mobile phone number (10-15 digits).')
+      return null
+    }
+
+    setPhoneBusy(true)
+    setError(null)
+    try {
+      const existing = phoneNumbers[0]
+      const saved = existing
+        ? await userApi.updatePhoneNumber(existing.id, { phoneNumber: value, isDefault: true })
+        : await userApi.addPhoneNumber({ phoneNumber: value, isDefault: true })
+      // Re-read so ordering matches the profile exactly.
+      setPhoneNumbers(await userApi.getPhoneNumbers())
+      setEditingPhone(false)
+      return saved
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not save the phone number.'))
+      return null
+    } finally {
+      setPhoneBusy(false)
     }
   }
 
@@ -202,10 +240,14 @@ export function CheckoutPage() {
       selectedId = saved.id
     }
 
-    let selectedPhone = phoneNumber
-    if (selectedPhoneId !== '') {
-      const phone = phoneNumbers.find(p => p.id === selectedPhoneId)
-      if (phone) selectedPhone = phone.phoneNumber
+    // Phone: the customer's single primary phone number is used automatically.
+    // Only customers without a saved number are asked to enter one first -
+    // exactly how the address draft above is handled.
+    let selectedPhone = phoneNumbers[0]?.phoneNumber ?? ''
+    if (!selectedPhone) {
+      const saved = await persistPhoneDraft()
+      if (!saved) return // persistPhoneDraft already set the error
+      selectedPhone = saved.phoneNumber
     }
 
     if (!selectedPhone || selectedPhone.trim().length < 10) {
@@ -266,7 +308,7 @@ export function CheckoutPage() {
     )
   }
 
-  const busy = submitting || addressBusy
+  const busy = submitting || addressBusy || phoneBusy
 
   return (
     <div className="shell py-10">
@@ -363,29 +405,72 @@ export function CheckoutPage() {
 
             <div className="mt-6 border-t border-navy/10 pt-4">
               <h2 className="font-display text-lg text-royal">Mobile number</h2>
-              {phoneNumbers.length > 0 ? (
-                <ul className="mt-4 space-y-2">
-                  {phoneNumbers.map((phone) => (
-                    <li key={phone.id}>
-                      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-navy/10 p-3 has-[:checked]:border-royal has-[:checked]:bg-royal/5">
-                        <input
-                          type="radio"
-                          name="phone"
-                          checked={selectedPhoneId === phone.id}
-                          onChange={() => { setSelectedPhoneId(phone.id); setPhoneNumber(phone.phoneNumber) }}
-                          className="mt-1"
-                        />
-                        <span className="flex-1 text-sm font-semibold text-navy">{phone.phoneNumber}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-navy/70">No saved phone numbers.</p>
+              <p className="mt-1 text-sm text-navy/70">Your primary phone number is used automatically for this order.</p>
+
+              {phoneNumbers.length > 0 && !editingPhone && (
+                <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-navy/10 p-3">
+                  <span className="flex-1">
+                    <span className="block text-sm font-semibold text-navy">{phoneNumbers[0].phoneNumber}</span>
+                    <span className="mt-1 block text-xs text-royal">Primary</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-royal"
+                    disabled={phoneBusy}
+                    onClick={() => {
+                      setPhoneForm(phoneNumbers[0].phoneNumber)
+                      setEditingPhone(true)
+                    }}
+                  >
+                    Edit
+                  </button>
+                </div>
               )}
-              <div className="mt-4">
-                <Input label="Or enter new phone number" value={selectedPhoneId === '' ? phoneNumber : ''} onChange={(e) => { setSelectedPhoneId(''); setPhoneNumber(e.target.value) }} placeholder="01xxxxxxxxx" />
-              </div>
+
+              {(phoneNumbers.length === 0 || editingPhone) && (
+                <div className="mt-4">
+                  <p className="text-sm font-semibold text-royal">
+                    {phoneNumbers.length > 0 ? 'Edit phone number' : 'Add your phone number'}
+                  </p>
+                  <div className="mt-3">
+                    <Input
+                      label="Phone number"
+                      required
+                      inputMode="tel"
+                      maxLength={20}
+                      value={phoneForm}
+                      onChange={(e) => setPhoneForm(e.target.value)}
+                      placeholder="01xxxxxxxxx"
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="py-2 text-sm"
+                      loading={phoneBusy}
+                      disabled={busy}
+                      onClick={() => void persistPhoneDraft()}
+                    >
+                      {editingPhone ? 'Update number' : 'Save number'}
+                    </Button>
+                    {editingPhone && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="py-2 text-sm"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingPhone(false)
+                          setPhoneForm('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

@@ -122,6 +122,7 @@ export function OrderDetailsPage() {
             {order.promoCode ? ` · Promo ${order.promoCode}` : ''}
           </p>
           <p className="mt-2 text-sm text-navy/70">Ship to: {order.shippingAddress}</p>
+          <p className="mt-1 text-sm text-navy/70">Contact: {order.phoneNumber}</p>
           {canCancel && (
             <Button type="button" variant="ghost" loading={busy} className="mt-6" onClick={() => void cancel()}>
               Cancel order

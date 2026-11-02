@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { userApi } from '@/services/api'
 import { useAuth } from '@/context/AuthContext'
-import type { Address, SellerProfile } from '@/types/api.types'
+import type { Address, SellerProfile, UserPhoneNumber } from '@/types/api.types'
 import { getErrorMessage } from '@/utils/errors'
 import { Button } from '@/components/common/Button'
 import { Input, TextArea } from '@/components/common/FormField'
@@ -14,15 +14,15 @@ export function ProfilePage() {
   const [fullName, setFullName] = useState(user?.fullName ?? '')
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '')
   const [addresses, setAddresses] = useState<Address[]>([])
-  const [phoneNumbers, setPhoneNumbers] = useState<{ id: number; phoneNumber: string; createdAt: string }[]>([])
+  const [phoneNumbers, setPhoneNumbers] = useState<UserPhoneNumber[]>([])
   const [seller, setSeller] = useState<SellerProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [addressForm, setAddressForm] = useState({ city: '', street: '', buildingNumber: '' })
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [phoneForm, setPhoneForm] = useState({ phoneNumber: '' })
-  const [editingPhoneId, setEditingPhoneId] = useState<number | null>(null)
+  const [phoneForm, setPhoneForm] = useState('')
+  const [editingPhone, setEditingPhone] = useState(false)
   const [sellerForm, setSellerForm] = useState({ storeName: '', description: '', logo: '' })
   const [busy, setBusy] = useState(false)
 
@@ -58,7 +58,7 @@ export function ProfilePage() {
     setBusy(true)
     setNotice(null)
     try {
-      await userApi.updateProfile({ fullName, phoneNumber: phoneNumber || null })
+      await userApi.updateProfile({ fullName, phoneNumber: (phoneNumbers[0]?.phoneNumber ?? phoneNumber) || null })
       await refreshProfile()
       setNotice('Profile updated.')
     } catch (err) {
@@ -100,31 +100,27 @@ export function ProfilePage() {
     }
   }
 
+  // A customer has exactly ONE primary phone number: edit the saved row when
+  // it exists, otherwise create the first one.
   async function savePhoneNumber(event: FormEvent) {
     event.preventDefault()
+    const value = phoneForm.trim()
+    if (value.replace(/\D/g, '').length < 10) {
+      setNotice('Enter a valid phone number (at least 10 digits).')
+      return
+    }
     setBusy(true)
     setNotice(null)
     try {
-      if (editingPhoneId) {
-        await userApi.updatePhoneNumber(editingPhoneId, phoneForm)
+      const existing = phoneNumbers[0]
+      if (existing) {
+        await userApi.updatePhoneNumber(existing.id, { phoneNumber: value, isDefault: true })
       } else {
-        await userApi.addPhoneNumber(phoneForm)
+        await userApi.addPhoneNumber({ phoneNumber: value, isDefault: true })
       }
-      setPhoneForm({ phoneNumber: '' })
-      setEditingPhoneId(null)
       setPhoneNumbers(await userApi.getPhoneNumbers())
-    } catch (err) {
-      setNotice(getErrorMessage(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function removePhoneNumber(id: number) {
-    setBusy(true)
-    try {
-      await userApi.deletePhoneNumber(id)
-      setPhoneNumbers(await userApi.getPhoneNumbers())
+      setEditingPhone(false)
+      setNotice('Primary phone number saved.')
     } catch (err) {
       setNotice(getErrorMessage(err))
     } finally {
@@ -200,7 +196,6 @@ export function ProfilePage() {
           <h2 className="font-display text-xl text-royal">Profile</h2>
           <form onSubmit={saveProfile} className="mt-4">
             <Input label="Full name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            <Input label="Phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
             <Button type="submit" loading={busy}>Save profile</Button>
           </form>
         </section>
@@ -248,34 +243,61 @@ export function ProfilePage() {
         )}
 
         <section className="card p-6">
-          <h2 className="font-display text-xl text-royal">Phone Numbers</h2>
-          <ul className="mt-4 space-y-3">
-            {phoneNumbers.map((phone) => (
-              <li key={phone.id} className="flex items-start justify-between gap-3 rounded-xl bg-off-white p-3">
-                <p className="text-sm">{phone.phoneNumber}</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="text-sm font-semibold text-royal"
-                    onClick={() => {
-                      setEditingPhoneId(phone.id)
-                      setPhoneForm({ phoneNumber: phone.phoneNumber })
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button type="button" className="text-sm text-navy/60" onClick={() => void removePhoneNumber(phone.id)}>
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <form onSubmit={savePhoneNumber} className="mt-4">
-            <p className="text-sm font-semibold text-royal">{editingPhoneId ? 'Edit phone number' : 'Add phone number'}</p>
-            <Input label="Phone Number" required value={phoneForm.phoneNumber} onChange={(e) => setPhoneForm({ phoneNumber: e.target.value })} />
-            <Button type="submit" loading={busy}>{editingPhoneId ? 'Update phone number' : 'Add phone number'}</Button>
-          </form>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-xl text-royal">Primary phone number</h2>
+            {!editingPhone && (
+              <button
+                type="button"
+                className="text-sm font-semibold text-royal"
+                disabled={busy}
+                onClick={() => {
+                  setPhoneForm(phoneNumbers[0]?.phoneNumber ?? '')
+                  setEditingPhone(true)
+                }}
+              >
+                {phoneNumbers.length > 0 ? 'Edit' : 'Add'}
+              </button>
+            )}
+          </div>
+
+          {phoneNumbers.length > 0 && !editingPhone && (
+            <div className="mt-4 rounded-xl bg-off-white p-3">
+              <p className="text-sm font-semibold text-navy">{phoneNumbers[0].phoneNumber}</p>
+              <span className="mt-1 inline-block text-xs font-semibold text-royal">Primary</span>
+            </div>
+          )}
+
+          {phoneNumbers.length === 0 && !editingPhone && (
+            <p className="mt-4 text-sm text-navy/70">
+              No phone number saved yet. Add your primary phone number so we can use it at checkout.
+            </p>
+          )}
+
+          {editingPhone && (
+            <form onSubmit={savePhoneNumber} className="mt-4">
+              <p className="text-sm font-semibold text-royal">
+                {phoneNumbers.length > 0 ? 'Edit phone number' : 'Add phone number'}
+              </p>
+              <Input
+                label="Phone Number"
+                required
+                inputMode="tel"
+                maxLength={20}
+                value={phoneForm}
+                onChange={(e) => setPhoneForm(e.target.value)}
+              />
+              <div className="mt-2 flex gap-2">
+                <Button type="submit" loading={busy}>
+                  {phoneNumbers.length > 0 ? 'Update phone number' : 'Save phone number'}
+                </Button>
+                {phoneNumbers.length > 0 && (
+                  <Button type="button" variant="ghost" onClick={() => setEditingPhone(false)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          )}
         </section>
       </div>
 

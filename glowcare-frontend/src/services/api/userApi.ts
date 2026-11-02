@@ -6,6 +6,8 @@ import type {
   SellerProfile,
   UpdateProfileRequest,
   UserProfile,
+  UserPhoneNumber,
+  UserPhoneNumberRequest,
 } from '@/types/api.types'
 
 /**
@@ -43,18 +45,18 @@ export async function deleteAddress(id: number): Promise<void> {
   await api.delete(`/users/me/addresses/${id}`)
 }
 
-export async function getPhoneNumbers(): Promise<{ id: number; phoneNumber: string; createdAt: string }[]> {
-  const { data } = await api.get('/users/me/phone-numbers')
+export async function getPhoneNumbers(): Promise<UserPhoneNumber[]> {
+  const { data } = await api.get<UserPhoneNumber[]>('/users/me/phone-numbers')
   return data
 }
 
-export async function addPhoneNumber(payload: { phoneNumber: string }): Promise<{ id: number; phoneNumber: string; createdAt: string }> {
-  const { data } = await api.post('/users/me/phone-numbers', payload)
+export async function addPhoneNumber(payload: UserPhoneNumberRequest): Promise<UserPhoneNumber> {
+  const { data } = await api.post<UserPhoneNumber>('/users/me/phone-numbers', payload)
   return data
 }
 
-export async function updatePhoneNumber(id: number, payload: { phoneNumber: string }): Promise<{ id: number; phoneNumber: string; createdAt: string }> {
-  const { data } = await api.put(`/users/me/phone-numbers/${id}`, payload)
+export async function updatePhoneNumber(id: number, payload: UserPhoneNumberRequest): Promise<UserPhoneNumber> {
+  const { data } = await api.put<UserPhoneNumber>(`/users/me/phone-numbers/${id}`, payload)
   return data
 }
 

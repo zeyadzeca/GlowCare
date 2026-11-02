@@ -6,6 +6,7 @@ namespace GlowCare.API.Models.User;
 /// <summary>
 /// A phone number belonging to a registered user.
 /// Similar to Address - one user can have multiple phone numbers.
+/// Exactly one phone number can be marked as default.
 /// </summary>
 public class UserPhoneNumber
 {
@@ -19,6 +20,8 @@ public class UserPhoneNumber
     [Phone]
     [MaxLength(20)]
     public string PhoneNumber { get; set; } = string.Empty;
+
+    public bool IsDefault { get; set; } = false;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

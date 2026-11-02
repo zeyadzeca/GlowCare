@@ -93,6 +93,20 @@ export interface AddressRequest {
   buildingNumber: string
 }
 
+/** `UserPhoneNumberDto` - a phone number saved by the authenticated user. */
+export interface UserPhoneNumber {
+  id: number
+  phoneNumber: string
+  isDefault: boolean
+  createdAt: string
+}
+
+/** `CreatePhoneNumberDto` / `UpdatePhoneNumberDto`. */
+export interface UserPhoneNumberRequest {
+  phoneNumber: string
+  isDefault: boolean
+}
+
 export interface SellerApplicationRequest {
   storeName: string
   description: string
@@ -250,6 +264,8 @@ export interface CheckoutRequest {
   addressId: number
   paymentMethod: PaymentMethod
   promoCode?: string | null
+  /** Mobile phone number for delivery contact (snapshotted into the order). */
+  phoneNumber: string
 }
 
 /** `OrderSummaryDto` - all money values calculated by the backend. */
@@ -296,6 +312,7 @@ export interface Order {
   discountAmount: number
   totalAmount: number
   shippingAddress: string
+  phoneNumber: string
   promoCode: string | null
   items: OrderItem[]
   statusHistory: OrderStatusHistoryEntry[]

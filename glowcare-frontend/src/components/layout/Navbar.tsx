@@ -79,7 +79,7 @@ export function Navbar() {
           Categories <ChevronDown className="h-4 w-4" />
         </button>
         {openDropdown === 'categories' && (
-          <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-2 max-h-64 w-48 overflow-y-auto overscroll-contain rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
             {categories.length > 0 ? (
               categories.map((category) => (
                 <Link
@@ -106,7 +106,7 @@ export function Navbar() {
           Brands <ChevronDown className="h-4 w-4" />
         </button>
         {openDropdown === 'brands' && (
-          <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-2 max-h-64 w-48 overflow-y-auto overscroll-contain rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
             {brands.length > 0 ? (
               brands.map((brand) => (
                 <Link
@@ -133,7 +133,7 @@ export function Navbar() {
           Skin Types <ChevronDown className="h-4 w-4" />
         </button>
         {openDropdown === 'skinTypes' && (
-          <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-2 max-h-64 w-48 overflow-y-auto overscroll-contain rounded-lg border border-navy/10 bg-white p-2 shadow-lg">
             {skinTypes.length > 0 ? (
               skinTypes.map((skinType) => (
                 <Link

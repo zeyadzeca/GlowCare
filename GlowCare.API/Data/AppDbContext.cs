@@ -101,11 +101,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         });
 
         // ------------------------------------------------------------------
-        // UserPhoneNumber: one user can have many phone numbers.
-        // Deleting a user removes their phone numbers.
+        // UserPhoneNumber: exactly ONE primary phone number per user,
+        // enforced at the database level with a unique index on UserId.
+        // Deleting a user removes their phone number.
         // ------------------------------------------------------------------
         builder.Entity<UserPhoneNumber>(entity =>
         {
+            entity.HasIndex(p => p.UserId).IsUnique();
+
             entity.HasOne(p => p.User)
                   .WithMany(u => u.PhoneNumbers)
                   .HasForeignKey(p => p.UserId)
